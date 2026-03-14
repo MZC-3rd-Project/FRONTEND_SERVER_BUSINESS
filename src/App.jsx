@@ -1,14 +1,8 @@
-import {Button} from "@/components/ui/button.js";
-import useCounterStore from "@/common/store/store.js";
-import CommonRoute from "../routes/route.jsx";
-
+import BusinessRoutes from "./routes/route.jsx";
+import "./index.css";
 
 function App() {
-
-  return (
-      <CommonRoute />
-  )
-
+  return <BusinessRoutes />;
 }
 
-export default App
+export default App;
