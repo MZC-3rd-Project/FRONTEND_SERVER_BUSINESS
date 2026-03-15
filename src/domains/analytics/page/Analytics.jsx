@@ -4,8 +4,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, BarChart3 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card.js";
+import { Badge } from "@/components/ui/badge.js";
 
 const DAILY = [
   { date: "3/8",  revenue: 320000, orders: 28 },

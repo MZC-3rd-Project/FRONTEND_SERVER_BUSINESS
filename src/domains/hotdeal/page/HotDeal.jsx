@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Tag, Clock, Percent, Package, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { Label } from "@/components/ui/label.js";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
+} from "@/components/ui/select.js";
+import { Card, CardContent } from "@/components/ui/card.js";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert.js";
+import { Switch } from "@/components/ui/switch.js";
 
 const MOCK_ITEMS = [
   { id: 1, name: "유기농 사과", price: 12000 },
