@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Zap, Target, Calendar, DollarSign, Users, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { Label } from "@/components/ui/label.js";
+import { Textarea } from "@/components/ui/textarea.js";
+import { Card, CardContent } from "@/components/ui/card.js";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert.js";
+import { Switch } from "@/components/ui/switch.js";
 
 export default function FundingPage() {
   const [form, setForm] = useState({

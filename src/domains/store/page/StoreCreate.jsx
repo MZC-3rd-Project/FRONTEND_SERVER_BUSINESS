@@ -3,17 +3,17 @@ import {
   Store, MapPin, Phone, ImagePlus, FileText,
   ChevronRight, Check, X, Plus, Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { Label } from "@/components/ui/label.js";
+import { Textarea } from "@/components/ui/textarea.js";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+} from "@/components/ui/select.js";
+import { Card, CardContent } from "@/components/ui/card.js";
+import { Alert, AlertDescription } from "@/components/ui/alert.js";
+import { Badge } from "@/components/ui/badge.js";
+import { cn } from "@/lib/utils.js";
 
 const STEPS = ["기본 정보", "주소", "연락처", "소개 & 이미지"];
 const ADDRESS_TYPES = ["MAIN", "PICKUP", "RETURN", "WAREHOUSE"];

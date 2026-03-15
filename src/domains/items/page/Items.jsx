@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Package, Plus, Trash2, Search, Tag, DollarSign, ToggleLeft, ToggleRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { Label } from "@/components/ui/label.js";
+import { Textarea } from "@/components/ui/textarea.js";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/select.js";
+import { Card } from "@/components/ui/card.js";
+import { Badge } from "@/components/ui/badge.js";
 
 const CATEGORIES = ["식품", "음료", "디저트", "생활용품", "기타"];
 const INIT = { name: "", category: "식품", price: "", stock: "", description: "", active: true };
