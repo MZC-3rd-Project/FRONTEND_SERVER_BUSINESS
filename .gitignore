@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+terraform/terraform.tfvars
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/*.tfstate.backup
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
