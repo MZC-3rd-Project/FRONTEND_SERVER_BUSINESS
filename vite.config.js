@@ -9,10 +9,14 @@ export default defineConfig({
   server: {
     port: 3001,
     proxy: {
-      "/api": {
+      "/api/store": {
         target: "http://localhost:8072",
         changeOrigin: true,
-      }
+      },
+      "/api": {
+        target: "http://localhost:8084",
+        changeOrigin: true,
+      },
     }
 
   },
