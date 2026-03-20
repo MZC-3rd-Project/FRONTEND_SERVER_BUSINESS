@@ -28,3 +28,4 @@ terraform/*.tfstate.backup
 *.sln
 *.sw?
 CLAUDE.md
+.env.development

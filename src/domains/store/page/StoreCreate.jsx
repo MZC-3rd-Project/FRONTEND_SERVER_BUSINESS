@@ -1,28 +1,33 @@
-import { useState } from "react";
+import { useActionState, useState } from "react"
 import {
   Store, MapPin, Phone, ImagePlus, FileText,
   ChevronRight, Check, X, Plus, Trash2,
-} from "lucide-react";
-import { Button } from "@/components/ui/button.js";
-import { Input } from "@/components/ui/input.js";
-import { Label } from "@/components/ui/label.js";
-import { Textarea } from "@/components/ui/textarea.js";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select.js";
-import { Card, CardContent } from "@/components/ui/card.js";
-import { Alert, AlertDescription } from "@/components/ui/alert.js";
-import { Badge } from "@/components/ui/badge.js";
-import { cn } from "@/lib/utils.js";
+} from "lucide-react"
+import { createStoreAction } from "@/domains/store/actions/createStoreAction"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
-const STEPS = ["기본 정보", "주소", "연락처", "소개 & 이미지"];
-const ADDRESS_TYPES = ["MAIN", "PICKUP", "RETURN", "WAREHOUSE"];
-const CONTACT_TYPES = ["PHONE", "EMAIL", "KAKAO", "SNS"];
-const ADDRESS_LABEL = { MAIN: "메인", PICKUP: "픽업", RETURN: "반품", WAREHOUSE: "창고" };
+const STEPS = ["기본 정보", "주소", "연락처", "소개 & 이미지"]
+const ADDRESS_TYPES = ["MAIN", "PICKUP", "RETURN", "WAREHOUSE"]
+const CONTACT_TYPES = ["PHONE", "EMAIL", "KAKAO", "SNS"]
+const ADDRESS_LABEL = { MAIN: "메인", PICKUP: "픽업", RETURN: "반품", WAREHOUSE: "창고" }
 const CONTACT_PLACEHOLDER = {
   PHONE: "010-0000-0000", EMAIL: "example@email.com",
   KAKAO: "카카오 채널 ID", SNS: "SNS 링크",
-};
+}
+
+const INITIAL_FORM = {
+  store_name: "", status: "INACTIVE",
+  addresses: [], contacts: [],
+  description: "", thumbnail: null, gallery: [],
+}
 
 function StepIndicator({ current }) {
   return (
@@ -54,60 +59,75 @@ function StepIndicator({ current }) {
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 function Step1({ data, onChange, errors }) {
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-2">
-        <Store size={18} className="text-primary" />
-        <h2 className="text-base font-semibold">가게 기본 정보</h2>
+      <div className="flex flex-col gap-5">
+          <div className="flex items-center gap-2">
+              <Store size={18} className="text-primary"/>
+              <h2 className="text-base font-semibold">가게 기본 정보</h2>
+          </div>
+          <div className="flex flex-col gap-1.5">
+              <Label htmlFor="store_name">가게명 <span className="text-destructive">*</span></Label>
+              <Input
+                  id="store_name" name="store_name"
+                  value={data.store_name} onChange={onChange}
+                  placeholder="가게 이름을 입력하세요"
+              />
+              {errors?.store_name && (
+                  <span className="text-destructive text-xs font-medium">{errors.store_name}</span>
+              )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+              <Label>운영 상태 <span className="text-destructive">*</span></Label>
+              <div className="flex gap-3">
+                  {[{value: "ACTIVE", label: "활성"}, {value: "INACTIVE", label: "비활성"}].map((s) => (
+                      <button key={s.value} type="button"
+                              onClick={() => onChange({target: {name: "status", value: s.value}})}
+                              className={cn(
+                                  "flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all",
+                                  data.status === s.value
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : "bg-input border-border hover:border-primary/50"
+                              )}>
+                          {s.label}
+                      </button>
+                  ))}
+              </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+              <Label htmlFor="description">가게 소개</Label>
+              <Textarea
+                  className="placeholder:opacity-25"
+                  id="description" name="description"
+                  value={data.description} onChange={onChange}
+                  placeholder="가게를 소개하는 글을 입력하세요..."
+                  rows={4}
+              />
+          </div>
+          <Alert>
+              <AlertDescription>
+                  가게 생성 후 상태를 ACTIVE로 변경하면 고객에게 노출됩니다.
+              </AlertDescription>
+          </Alert>
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="store_name">가게명 <span className="text-destructive">*</span></Label>
-        <Input
-          id="store_name" name="store_name"
-          value={data.store_name} onChange={onChange}
-          placeholder="가게 이름을 입력하세요"
-        />
-        {errors?.store_name && (
-          <span className="text-destructive text-xs font-medium">{errors.store_name}</span>
-        )}
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label>운영 상태 <span className="text-destructive">*</span></Label>
-        <div className="flex gap-3">
-          {[{ value: "ACTIVE", label: "활성" }, { value: "INACTIVE", label: "비활성" }].map((s) => (
-            <button key={s.value} type="button"
-              onClick={() => onChange({ target: { name: "status", value: s.value } })}
-              className={cn(
-                "flex-1 py-2.5 rounded-lg text-sm font-medium border transition-all",
-                data.status === s.value
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-input border-border hover:border-primary/50"
-              )}>
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <Alert>
-        <AlertDescription>
-          가게 생성 후 상태를 ACTIVE로 변경하면 고객에게 노출됩니다.
-        </AlertDescription>
-      </Alert>
-    </div>
-  );
+  )
 }
 
-function Step2({ data, onChange }) {
-  const update = (idx, field, value) =>
-    onChange({ target: { name: "addresses", value: data.addresses.map((a, i) => i === idx ? { ...a, [field]: value } : a) } });
-  const add = () =>
-    onChange({ target: { name: "addresses", value: [...data.addresses, { address_type: "MAIN", address: "", is_default: false }] } });
+function Step2({data, onChange}) {
+    const update = (idx, field, value) =>
+        onChange({
+            target: {
+                name: "addresses",
+                value: data.addresses.map((a, i) => i === idx ? {...a, [field]: value} : a)
+            }
+        })
+    const add = () =>
+        onChange({target: {name: "addresses", value: [...data.addresses, { address_type: "MAIN", address: "", is_default: false }] } })
   const remove = (idx) =>
-    onChange({ target: { name: "addresses", value: data.addresses.filter((_, i) => i !== idx) } });
+    onChange({ target: { name: "addresses", value: data.addresses.filter((_, i) => i !== idx) } })
 
   return (
     <div className="flex flex-col gap-5">
@@ -164,16 +184,16 @@ function Step2({ data, onChange }) {
         </Card>
       ))}
     </div>
-  );
+  )
 }
 
 function Step3({ data, onChange }) {
   const update = (idx, field, value) =>
-    onChange({ target: { name: "contacts", value: data.contacts.map((c, i) => i === idx ? { ...c, [field]: value } : c) } });
+    onChange({ target: { name: "contacts", value: data.contacts.map((c, i) => i === idx ? { ...c, [field]: value } : c) } })
   const add = () =>
-    onChange({ target: { name: "contacts", value: [...data.contacts, { contact_type: "PHONE", contact_value: "", is_primary: false }] } });
+    onChange({ target: { name: "contacts", value: [...data.contacts, { contact_type: "PHONE", contact_value: "", is_primary: false }] } })
   const remove = (idx) =>
-    onChange({ target: { name: "contacts", value: data.contacts.filter((_, i) => i !== idx) } });
+    onChange({ target: { name: "contacts", value: data.contacts.filter((_, i) => i !== idx) } })
 
   return (
     <div className="flex flex-col gap-5">
@@ -231,20 +251,20 @@ function Step3({ data, onChange }) {
         </Card>
       ))}
     </div>
-  );
+  )
 }
 
 function Step4({ data, onChange }) {
-  const MAX = 4;
+  const MAX = 4
   const addThumb = (e) => {
-    const f = e.target.files[0];
-    if (f) onChange({ target: { name: "thumbnail", value: { file: f, url: URL.createObjectURL(f) } } });
-  };
+    const f = e.target.files[0]
+    if (f) onChange({ target: { name: "thumbnail", value: { file: f, url: URL.createObjectURL(f) } } })
+  }
   const addGallery = (e) => {
-    const f = e.target.files[0];
+    const f = e.target.files[0]
     if (f && data.gallery.length < MAX)
-      onChange({ target: { name: "gallery", value: [...data.gallery, { file: f, url: URL.createObjectURL(f) }] } });
-  };
+      onChange({ target: { name: "gallery", value: [...data.gallery, { file: f, url: URL.createObjectURL(f) }] } })
+  }
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-2">
@@ -304,7 +324,7 @@ function Step4({ data, onChange }) {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function ReviewSummary({ data }) {
@@ -339,33 +359,33 @@ function ReviewSummary({ data }) {
         ))}
       </CardContent></Card>
     </div>
-  );
+  )
 }
 
 export default function StoreCreatePage() {
-  const [step, setStep] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [formData, setFormData] = useState({
-    store_name: "", status: "INACTIVE",
-    addresses: [], contacts: [],
-    description: "", thumbnail: null, gallery: [],
-  });
+  const [step, setStep] = useState(0)
+  const [stepErrors, setStepErrors] = useState({})
+  const [formData, setFormData] = useState(INITIAL_FORM)
+
+  const [state, formAction, isPending] = useActionState(createStoreAction,
+      { success: false, errors: {} })
+
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
-    if (errors[name]) setErrors((p) => ({ ...p, [name]: null }));
-  };
+    const { name, value } = e.target
+    setFormData((p) => ({ ...p, [name]: value }))
+    if (stepErrors[name]) setStepErrors((p) => ({ ...p, [name]: null }))
+  }
 
-  const validate = () => {
-    const errs = {};
-    if (step === 0 && !formData.store_name.trim()) errs.store_name = "가게명을 입력해주세요.";
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+  const validateStep = () => {
+    const errs = {}
+    if (step === 0 && !formData.store_name.trim()) errs.store_name = "가게명을 입력해주세요."
+    setStepErrors(errs)
+    return Object.keys(errs).length === 0
+  }
 
-  if (submitted) {
+
+  if (state.success) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -373,9 +393,9 @@ export default function StoreCreatePage() {
         </div>
         <h2 className="text-xl font-bold">가게 생성 완료!</h2>
         <p className="text-muted-foreground text-sm">가게가 성공적으로 등록되었습니다.</p>
-        <Button onClick={() => { setSubmitted(false); setStep(0); }}>다시 생성하기</Button>
+        <Button onClick={() => { setStep(0); setFormData(INITIAL_FORM) }}>다시 생성하기</Button>
       </div>
-    );
+    )
   }
 
   return (
@@ -387,7 +407,7 @@ export default function StoreCreatePage() {
       <StepIndicator current={step} />
       <Card>
         <CardContent className="p-6 sm:p-8 min-h-80">
-          {step === 0 && <Step1 data={formData} onChange={handleChange} errors={errors} />}
+          {step === 0 && <Step1 data={formData} onChange={handleChange} errors={stepErrors} />}
           {step === 1 && <Step2 data={formData} onChange={handleChange} />}
           {step === 2 && <Step3 data={formData} onChange={handleChange} />}
           {step === 3 && <Step4 data={formData} onChange={handleChange} />}
@@ -399,16 +419,28 @@ export default function StoreCreatePage() {
           이전
         </Button>
         {step <= STEPS.length - 1 && (
-          <Button onClick={() => { if (validate()) setStep((s) => s + 1); }}>
+          <Button onClick={() => { if (validateStep()) setStep((s) => s + 1) }}>
             다음 <ChevronRight size={16} />
           </Button>
         )}
         {step === STEPS.length && (
-          <Button onClick={() => { console.log(formData); setSubmitted(true); }}>
-            <Check size={16} /> 가게 생성
-          </Button>
+          <form action={formAction} className="flex flex-col items-end gap-2">
+            <input type="hidden" name="store_name" value={formData.store_name} />
+            <input type="hidden" name="status" value={formData.status} />
+            <input type="hidden" name="addresses" value={JSON.stringify(formData.addresses)} />
+            <input type="hidden" name="contacts" value={JSON.stringify(formData.contacts)} />
+            <input type="hidden" name="description" value={formData.description} />
+            {state.errors?._form && (
+              <Alert variant="destructive">
+                <AlertDescription>{state.errors._form[0]}</AlertDescription>
+              </Alert>
+            )}
+            <Button type="submit" disabled={isPending}>
+              <Check size={16} /> {isPending ? "생성 중..." : "가게 생성"}
+            </Button>
+          </form>
         )}
       </div>
     </div>
-  );
+  )
 }
