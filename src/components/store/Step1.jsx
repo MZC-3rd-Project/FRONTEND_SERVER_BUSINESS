@@ -1,9 +1,9 @@
 import {Store} from "lucide-react";
 import {Label} from "@/components/ui/label.js";
 import {Input} from "@/components/ui/input.js";
-import {Textarea} from "@/components/ui/textara.js";
 import {Alert, AlertDescription} from "@/components/ui/alert.js";
 import {cn} from "@/lib/utils.js";
+import {Textarea} from "@/components/ui/textarea.js";
 
 
 export default function Step1({ data, onChange, errors }) {
