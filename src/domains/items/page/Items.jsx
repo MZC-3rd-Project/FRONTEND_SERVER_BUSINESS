@@ -1,149 +1,333 @@
-import { useState } from "react";
-import { Package, Plus, Trash2, Search, Tag, DollarSign, ToggleLeft, ToggleRight } from "lucide-react";
-import { Button } from "@/components/ui/button.js";
-import { Input } from "@/components/ui/input.js";
-import { Label } from "@/components/ui/label.js";
-import { Textarea } from "@/components/ui/textarea.js";
+import { useEffect, useState } from "react"
+import { useActionState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { ShoppingBag, Music, Check } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select.js";
-import { Card } from "@/components/ui/card.js";
-import { Badge } from "@/components/ui/badge.js";
+} from "@/components/ui/select"
+import { Card } from "@/components/ui/card"
+import { createItemAction } from "../actions/createItemAction.js"
+import { useCategoriesQuery, useMyStoreQuery } from "../hook/useItemsQuery.js"
 
-const CATEGORIES = ["식품", "음료", "디저트", "생활용품", "기타"];
-const INIT = { name: "", category: "식품", price: "", stock: "", description: "", active: true };
-const MOCK = [
-  { id: 1, name: "유기농 사과", category: "식품", price: 12000, stock: 50, active: true },
-  { id: 2, name: "제주 감귤 주스", category: "음료", price: 6500, stock: 120, active: true },
-  { id: 3, name: "수제 쿠키 세트", category: "디저트", price: 18000, stock: 30, active: false },
-];
+function flattenTree(node) {
+  return [
+    { id: node.id, name: node.name },
+    ...(node.children ?? []).flatMap((c) => flattenTree(c)),
+  ]
+}
+
+function FieldError({ errors, name }) {
+  return errors?.[name] && (
+    <span className="text-destructive text-xs font-medium">{errors[name][0]}</span>
+  )
+}
 
 export default function ItemsPage() {
-  const [items, setItems] = useState(MOCK);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(INIT);
-  const [search, setSearch] = useState("");
-  const [errors, setErrors] = useState({});
+  const [itemType, setItemType] = useState("goods")
+  const [goodsCategoryId, setGoodsCategoryId] = useState("")
+  const [perfCategoryId, setPerfCategoryId] = useState("")
+  const [isSuccess, setIsSuccess] = useState(false)
+  const queryClient = useQueryClient()
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
-    if (errors[name]) setErrors((p) => ({ ...p, [name]: null }));
-  };
+  const [state, formAction, isPending] = useActionState(createItemAction, {});
 
-  const validate = () => {
-    const errs = {};
-    if (!form.name.trim()) errs.name = "아이템명을 입력해주세요.";
-    if (!form.price || isNaN(Number(form.price))) errs.price = "올바른 가격을 입력해주세요.";
-    if (!form.stock || isNaN(Number(form.stock))) errs.stock = "재고를 입력해주세요.";
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+  const { data: categoryTree = [] } = useCategoriesQuery()
+  const { data: myStore } = useMyStoreQuery()
 
-  const handleSubmit = () => {
-    if (!validate()) return;
-    setItems((p) => [...p, { ...form, id: Date.now(), price: Number(form.price), stock: Number(form.stock) }]);
-    setForm(INIT);
-    setShowForm(false);
-  };
+  const perfNode = categoryTree.find((c) => c.name === "공연/티켓")
+  const perfCategories = perfNode ? flattenTree(perfNode) : []
+  const goodsCategories = categoryTree
+    .filter((c) => c.name !== "공연/티켓")
+    .flatMap((c) => flattenTree(c))
 
-  const filtered = items.filter((it) => it.name.toLowerCase().includes(search.toLowerCase()));
+  useEffect(() => {
+    if (state.success) {
+      queryClient.invalidateQueries({ queryKey: ["seller-products"] })
+      setGoodsCategoryId("")
+      setPerfCategoryId("")
+      setIsSuccess(true)
+    }
+  }, [state.success, queryClient])
+
+  if (isSuccess) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+          <Check size={32} className="text-primary" />
+        </div>
+        <h2 className="text-xl font-bold">아이템 등록 완료!</h2>
+        <p className="text-muted-foreground text-sm">아이템이 성공적으로 등록되었습니다.</p>
+        <Button onClick={() => setIsSuccess(false)}>다시 등록하기</Button>
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">아이템 등록</h1>
-        <p className="text-muted-foreground text-sm mt-1">가게에서 판매할 아이템을 관리하세요.</p>
+        <p className="text-muted-foreground text-sm mt-1">가게에서 판매할 아이템을 등록하세요.</p>
       </div>
 
-      <div className="flex gap-3 mb-5">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="아이템 검색..." className="pl-9" />
-        </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          <Plus size={16} /> 아이템 추가
-        </Button>
-      </div>
+      <Card className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+            <div className="w-1 h-4 bg-primary rounded-full" />
+            <h3 className="font-semibold text-sm">새 아이템 등록</h3>
+          </div>
 
-      {showForm && (
-        <Card className="mb-5 border-primary/30 p-5">
-          <h3 className="font-semibold text-sm text-primary mb-4">새 아이템 등록</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
-              <Label htmlFor="name">아이템명 <span className="text-destructive">*</span></Label>
-              <Input id="name" name="name" value={form.name} onChange={handleChange} placeholder="아이템명" />
-              {errors.name && <span className="text-destructive text-xs">{errors.name}</span>}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>카테고리</Label>
-              <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>가격 (원) <span className="text-destructive">*</span></Label>
-              <Input name="price" value={form.price} onChange={handleChange} type="number" placeholder="0" />
-              {errors.price && <span className="text-destructive text-xs">{errors.price}</span>}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>재고 <span className="text-destructive">*</span></Label>
-              <Input name="stock" value={form.stock} onChange={handleChange} type="number" placeholder="0" />
-              {errors.stock && <span className="text-destructive text-xs">{errors.stock}</span>}
-            </div>
-            <div className="flex flex-col gap-1.5 col-span-2">
-              <Label>설명</Label>
-              <Textarea name="description" value={form.description} onChange={handleChange}
-                placeholder="아이템 설명" rows={2} />
+          <div className="px-6 pt-5">
+            <div className="flex gap-2 p-1 bg-muted rounded-lg w-full">
+              <button
+                type="button"
+                onClick={() => setItemType("goods")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
+                  itemType === "goods"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <ShoppingBag size={14} /> 굿즈
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemType("performance")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
+                  itemType === "performance"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Music size={14} /> 공연
+              </button>
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setShowForm(false)}>취소</Button>
-            <Button onClick={handleSubmit}>등록</Button>
-          </div>
+
+          {/* 굿즈 폼 */}
+          {itemType === "goods" && (
+            <div className="px-6 pb-6 pt-4">
+              <form action={formAction}>
+                <input type="hidden" name="itemType" value="goods" />
+                <input type="hidden" name="storeId" value={myStore?.id ?? ""} />
+                <input type="hidden" name="categoryId" value={goodsCategoryId} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <Label htmlFor="goods-name" className="text-sm font-medium">
+                      굿즈명 <span className="text-destructive">*</span>
+                    </Label>
+                    <Input id="goods-name" name="name" placeholder="판매할 굿즈명을 입력하세요" className="border border-border" />
+                    <FieldError errors={state.errors} name="name" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">
+                      카테고리 <span className="text-destructive">*</span>
+                    </Label>
+                    <Select value={goodsCategoryId} onValueChange={setGoodsCategoryId}>
+                      <SelectTrigger className="border border-border">
+                        <SelectValue placeholder="카테고리 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {goodsCategories.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldError errors={state.errors} name="categoryId" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">
+                      가격 <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₩</span>
+                      <Input name="price" type="number" placeholder="0" className="pl-7 border border-border" />
+                    </div>
+                    <FieldError errors={state.errors} name="price" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">
+                      재고 <span className="text-destructive">*</span>
+                    </Label>
+                    <Input name="stock" type="number" placeholder="0" min="0" className="border border-border" />
+                    <FieldError errors={state.errors} name="stock" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <Label className="text-sm font-medium">설명</Label>
+                    <Textarea name="description" placeholder="굿즈에 대한 간단한 설명을 입력하세요" rows={3} className="border border-border" />
+                  </div>
+                </div>
+
+                {state.errors?._root && (
+                  <p className="text-destructive text-xs font-medium mt-3">{state.errors._root[0]}</p>
+                )}
+
+                <div className="flex justify-end mt-5 pt-4 border-t border-border">
+                  <Button type="submit" disabled={isPending || !myStore?.id}>
+                    {isPending ? "등록 중..." : "굿즈 등록"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* 공연 폼 */}
+          {itemType === "performance" && (
+            <div className="px-6 pb-6 pt-4">
+              <form action={formAction}>
+                <input type="hidden" name="itemType" value="performance" />
+                <input type="hidden" name="storeId" value={myStore?.id ?? ""} />
+                <input type="hidden" name="categoryId" value={perfCategoryId} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                  {/* 기본 정보 */}
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <Label htmlFor="perf-name" className="text-sm font-medium">
+                      공연명 <span className="text-destructive">*</span>
+                    </Label>
+                    <Input id="perf-name" name="name" placeholder="공연명을 입력하세요" className="border border-border" />
+                    <FieldError errors={state.errors} name="name" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">
+                      카테고리 <span className="text-destructive">*</span>
+                    </Label>
+                    <Select value={perfCategoryId} onValueChange={setPerfCategoryId}>
+                      <SelectTrigger className="border border-border">
+                        <SelectValue placeholder="카테고리 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {perfCategories.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldError errors={state.errors} name="categoryId" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">
+                      기본 가격 <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₩</span>
+                      <Input name="price" type="number" placeholder="0" className="pl-7 border border-border" />
+                    </div>
+                    <FieldError errors={state.errors} name="price" />
+                  </div>
+
+                  {/* 공연 장소 */}
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">
+                      공연 장소 <span className="text-destructive">*</span>
+                    </Label>
+                    <Input name="venue" placeholder="예) 올림픽공원 체조경기장" className="border border-border" />
+                    <FieldError errors={state.errors} name="venue" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">공연장 주소</Label>
+                    <Input name="venueAddress" placeholder="예) 서울특별시 송파구 올림픽로 424" className="border border-border" />
+                  </div>
+
+                  {/* 일시 */}
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">
+                      공연 날짜 <span className="text-destructive">*</span>
+                    </Label>
+                    <Input name="performanceDate" type="date" className="border border-border" />
+                    <FieldError errors={state.errors} name="performanceDate" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">
+                      공연 시간 <span className="text-destructive">*</span>
+                    </Label>
+                    <Input name="performanceTime" type="time" className="border border-border" />
+                    <FieldError errors={state.errors} name="performanceTime" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">
+                      총 좌석 수 <span className="text-destructive">*</span>
+                    </Label>
+                    <Input name="totalSeats" type="number" placeholder="0" min="1" className="border border-border" />
+                    <FieldError errors={state.errors} name="totalSeats" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">러닝타임 (분)</Label>
+                    <Input name="runningTimeMinutes" type="number" placeholder="예) 120" min="1" className="border border-border" />
+                  </div>
+
+                  {/* 관람 정보 */}
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">관람 등급</Label>
+                    <Input name="ageLimit" placeholder="예) 15세 이상 관람가" className="border border-border" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">주최</Label>
+                    <Input name="organizer" placeholder="주최사 입력" className="border border-border" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">주관</Label>
+                    <Input name="host" placeholder="주관사 입력" className="border border-border" />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <Label className="text-sm font-medium">예매 유의사항</Label>
+                    <Textarea name="bookingNotice" placeholder="예매 및 관람 유의사항을 입력하세요" rows={2} className="border border-border" />
+                  </div>
+
+                  {/* 좌석 등급 */}
+                  <div className="sm:col-span-2 border border-border rounded-lg p-4 bg-muted/20">
+                    <p className="text-sm font-medium mb-3">좌석 등급 <span className="text-destructive">*</span></p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs text-muted-foreground">등급명</Label>
+                        <Input name="gradeName" placeholder="예) VIP, R석, S석" defaultValue="일반" className="border border-border" />
+                        <FieldError errors={state.errors} name="gradeName" />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs text-muted-foreground">등급 가격</Label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₩</span>
+                          <Input name="gradePrice" type="number" placeholder="0" min="0" className="pl-7 border border-border" />
+                        </div>
+                        <FieldError errors={state.errors} name="gradePrice" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <Label className="text-sm font-medium">설명</Label>
+                    <Textarea name="description" placeholder="공연에 대한 간단한 설명을 입력하세요" rows={3} className="border border-border" />
+                  </div>
+                </div>
+
+                {state.errors?._root && (
+                  <p className="text-destructive text-xs font-medium mt-3">{state.errors._root[0]}</p>
+                )}
+
+                <div className="flex justify-end mt-5 pt-4 border-t border-border">
+                  <Button type="submit" disabled={isPending || !myStore?.id}>
+                    {isPending ? "등록 중..." : "공연 등록"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
         </Card>
-      )}
-
-      <Card>
-        <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] text-xs font-semibold text-muted-foreground uppercase tracking-wide bg-muted/30 px-5 py-3 border-b border-border">
-          <span>아이템</span><span>가격</span><span>재고</span><span>상태</span><span></span>
-        </div>
-        {filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">아이템이 없습니다.</div>
-        ) : filtered.map((item) => (
-          <div key={item.id}
-            className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] items-center px-5 py-4 border-b border-border last:border-0 hover:bg-accent/20 transition-colors">
-            <div className="flex flex-col gap-0.5">
-              <span className="font-medium text-sm">{item.name}</span>
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Tag size={10} />{item.category}
-              </span>
-            </div>
-            <span className="text-sm font-medium flex items-center gap-0.5">
-              <DollarSign size={13} className="text-muted-foreground" />{item.price.toLocaleString()}
-            </span>
-            <span className="text-sm">{item.stock.toLocaleString()}</span>
-            <button
-              onClick={() => setItems((p) => p.map((it) => it.id === item.id ? { ...it, active: !it.active } : it))}
-              className="flex items-center gap-1.5 text-xs">
-              {item.active
-                ? <><ToggleRight size={20} className="text-primary" /><span className="text-primary font-medium">활성</span></>
-                : <><ToggleLeft size={20} className="text-muted-foreground" /><span className="text-muted-foreground">비활성</span></>
-              }
-            </button>
-            <button
-              onClick={() => setItems((p) => p.filter((it) => it.id !== item.id))}
-              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-              <Trash2 size={14} />
-            </button>
-          </div>
-        ))}
-      </Card>
-      <p className="text-xs text-muted-foreground mt-3">총 {filtered.length}개 아이템</p>
     </div>
-  );
+  )
 }
