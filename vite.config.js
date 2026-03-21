@@ -13,10 +13,18 @@ export default defineConfig({
         target: "http://localhost:8072",
         changeOrigin: true,
       },
-      "/api": {
+      "/api/products": {
         target: "http://localhost:8084",
         changeOrigin: true,
       },
+      "/api/funding":{
+        target: "http://localhost:8086",
+        changeOrigin: true,
+      },
+      "/api/campaigns":{
+        target: "http://localhost:8086",
+        changeOrigin: true,
+      }
     }
 
   },

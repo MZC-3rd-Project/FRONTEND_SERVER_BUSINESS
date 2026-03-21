@@ -1,8 +1,9 @@
 import apiInstance from "@/common/api/apiInstance.js"
 
-export async function getSellerProducts() {
-  const { data } = await apiInstance.get("/products")
-  return data
+export async function  getSellerProducts() {
+  const { data } = await apiInstance.get("/products");
+  console.log(data);
+  return data?.data;
 }
 
 export async function getCategories() {

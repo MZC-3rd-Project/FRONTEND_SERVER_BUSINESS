@@ -24,7 +24,8 @@ function FundingForm({ onReset }) {
   const queryClient = useQueryClient()
 
   const [state, formAction, isPending] = useActionState(createCampaignAction, {})
-  const { data: products = [] } = useSellerProductsQuery()
+  const { data: products = [] } = useSellerProductsQuery();
+  console.log("products", products);
 
   useEffect(() => {
     if (state.success) {

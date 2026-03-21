@@ -15,9 +15,15 @@ export const campaignCreateSchema = z.object({
   goalAmount: z.coerce
     .number({ invalid_type_error: "올바른 목표 금액을 입력해주세요." })
     .int()
-    .min(1, "목표 금액은 1원 이상이어야 합니다."),
+    .min(4, "목표 금액은 1000원 이상이어야 합니다."),
   goalQuantity: z.coerce.number().int().min(1).optional().or(z.literal("")),
   minAmount: z.coerce.number().int().min(1).optional().or(z.literal("")),
   startAt: z.string().min(1, "시작일을 선택해주세요."),
   endAt: z.string().min(1, "종료일을 선택해주세요."),
-})
+}).refine(
+    data => new Date(data.startAt) < new Date(data.endAt),
+    {
+      message: "종료일은 시작일보다 늦어야 합니다.",
+      path: ["endAt"],  // 에러를 endAt 필드에 표시
+    }
+)
