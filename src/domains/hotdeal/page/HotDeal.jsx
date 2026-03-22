@@ -1,138 +1,230 @@
-import { useState } from "react";
-import { Tag, Clock, Percent, Package, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button.js";
-import { Input } from "@/components/ui/input.js";
-import { Label } from "@/components/ui/label.js";
+import { useState, useEffect, useActionState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { Tag, Clock, Percent, Package, Hash, Check } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select.js";
-import { Card, CardContent } from "@/components/ui/card.js";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert.js";
-import { Switch } from "@/components/ui/switch.js";
+} from "@/components/ui/select"
+import { createHotDealAction } from "../actions/createHotDealAction.js"
+import { useSellerProductsQuery } from "@/domains/items/hook/useItemsQuery.js"
 
-const MOCK_ITEMS = [
-  { id: 1, name: "유기농 사과", price: 12000 },
-  { id: 2, name: "제주 감귤 주스", price: 6500 },
-  { id: 3, name: "수제 쿠키 세트", price: 18000 },
-];
+function FieldError({ errors, name }) {
+  return errors?.[name] && (
+    <span className="text-destructive text-xs font-medium">{errors[name][0]}</span>
+  )
+}
 
-export default function HotDealPage() {
-  const [form, setForm] = useState({
-    item_id: "", discount_rate: "10",
-    start_at: "", end_at: "", stock_limit: "", is_active: false,
-  });
-  const [saved, setSaved] = useState(false);
+function HotDealForm({ onReset }) {
+  const [itemId, setItemId] = useState("")
+  const [discountRate, setDiscountRate] = useState("10")
+  const queryClient = useQueryClient()
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
-  };
+  const [state, formAction, isPending] = useActionState(createHotDealAction, {})
+  const { data: products = [] } = useSellerProductsQuery()
+  console.log("products", products);
+  const selectedProduct = products.find((p) => String(p.id) === itemId)
+  const originalPrice = selectedProduct?.price ?? 0
+  const discountedPrice =
+    discountRate && originalPrice
+      ? Math.floor((originalPrice * (100 - Number(discountRate))) / 100)
+      : null
 
-  const selectedItem = MOCK_ITEMS.find((i) => i.id === Number(form.item_id));
-  const discountedPrice = selectedItem
-    ? Math.round(selectedItem.price * (1 - Number(form.discount_rate) / 100)) : null;
+  useEffect(() => {
+    if (state.success) {
+      queryClient.invalidateQueries({ queryKey: ["hot-deals"] })
+    }
+  }, [state.success, queryClient])
 
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
+  if (state.success) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+          <Check size={32} className="text-primary" />
+        </div>
+        <h2 className="text-xl font-bold">핫딜 등록 완료!</h2>
+        <p className="text-muted-foreground text-sm">핫딜이 성공적으로 등록되었습니다.</p>
+        <Button onClick={onReset}>다시 등록하기</Button>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">핫딜 설정</h1>
-        <p className="text-muted-foreground text-sm mt-1">한정 시간 할인 이벤트를 설정하세요.</p>
+        <p className="text-muted-foreground text-sm mt-1">한정 수량 특가 핫딜을 등록하세요.</p>
       </div>
 
-      {saved && (
-        <Alert className="mb-4">
-          <AlertTitle>저장 완료</AlertTitle>
-          <AlertDescription>핫딜이 저장되었습니다.</AlertDescription>
-        </Alert>
-      )}
+      <Card className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+          <div className="w-1 h-4 bg-primary rounded-full" />
+          <h3 className="font-semibold text-sm">핫딜 등록</h3>
+        </div>
 
-      <Card>
-        <CardContent className="p-6 flex flex-col gap-5">
-          <div className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg border border-destructive/20">
-            <div className="flex items-center gap-2">
-              <Tag size={16} className="text-destructive" />
-              <span className="text-sm font-medium">핫딜 활성화</span>
-            </div>
-            <Switch
-              checked={form.is_active}
-              onCheckedChange={(v) => setForm((p) => ({ ...p, is_active: v }))}
-            />
-          </div>
+        <div className="px-6 py-6">
+          <form action={formAction}>
+            <input type="hidden" name="itemId" value={itemId} />
 
-          <div className="flex flex-col gap-1.5">
-            <Label className="flex items-center gap-1">
-              <Package size={13} className="text-primary" />핫딜 아이템 <span className="text-destructive">*</span>
-            </Label>
-            <Select value={form.item_id} onValueChange={(v) => setForm((p) => ({ ...p, item_id: v }))}>
-              <SelectTrigger><SelectValue placeholder="아이템을 선택하세요" /></SelectTrigger>
-              <SelectContent>
-                {MOCK_ITEMS.map((item) => (
-                  <SelectItem key={item.id} value={String(item.id)}>
-                    {item.name} ({item.price.toLocaleString()}원)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-          <div className="flex flex-col gap-2">
-            <Label className="flex items-center gap-1">
-              <Percent size={13} className="text-primary" />할인율 ({form.discount_rate}%)
-            </Label>
-            <input type="range" name="discount_rate" min="5" max="90" step="5"
-              value={form.discount_rate} onChange={handleChange} className="w-full accent-primary" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>5%</span><span>50%</span><span>90%</span>
-            </div>
-          </div>
-
-          {selectedItem && (
-            <div className="p-4 bg-accent/30 rounded-lg border border-accent flex items-center gap-6">
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">원가</p>
-                <p className="text-sm font-medium line-through text-muted-foreground">
-                  {selectedItem.price.toLocaleString()}원
-                </p>
+              {/* 아이템 선택 */}
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label className="flex items-center gap-1">
+                  <Package size={13} className="text-primary" />
+                  아이템 <span className="text-destructive">*</span>
+                </Label>
+                <Select value={itemId} onValueChange={setItemId}>
+                  <SelectTrigger className="border border-border">
+                    <SelectValue placeholder="핫딜 적용할 아이템을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.title ?? p.name ?? `아이템 #${p.id}`}
+                        {p.price ? ` (${p.price.toLocaleString()}원)` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError errors={state.errors} name="itemId" />
               </div>
-              <div className="text-2xl font-bold text-destructive">-{form.discount_rate}%</div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">할인가</p>
-                <p className="text-lg font-bold text-primary">{discountedPrice?.toLocaleString()}원</p>
+
+              {/* 할인율 */}
+              <div className="flex flex-col gap-2 sm:col-span-2">
+                <Label className="flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Percent size={13} className="text-primary" />
+                    할인율 <span className="text-destructive">*</span>
+                  </span>
+                  <span className="text-lg font-bold text-primary">
+                    {discountRate ? `-${discountRate}%` : "-"}
+                  </span>
+                </Label>
+                <input type="hidden" name="discountRate" value={discountRate} />
+                <input
+                  type="range"
+                  min="10"
+                  max="90"
+                  step="10"
+                  value={discountRate || 10}
+                  onChange={(e) => setDiscountRate(e.target.value)}
+                  className="w-full accent-primary"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>10%</span>
+                  <span>50%</span>
+                  <span>90%</span>
+                </div>
+                <FieldError errors={state.errors} name="discountRate" />
               </div>
+
+              {/* 할인가 미리보기 */}
+              <div className="flex flex-col gap-1.5">
+                <Label>할인가 미리보기</Label>
+                <div className="flex items-center h-10 px-3 rounded-lg border border-border bg-muted/40 gap-2">
+                  {discountedPrice !== null ? (
+                    <>
+                      <span className="text-xs text-muted-foreground line-through">
+                        {originalPrice.toLocaleString()}원
+                      </span>
+                      <span className="text-sm font-semibold text-primary">
+                        {discountedPrice.toLocaleString()}원
+                      </span>
+                      <Badge className="ml-auto text-xs">-{discountRate}%</Badge>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      아이템과 할인율 입력 시 표시
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 총 판매 수량 */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="flex items-center gap-1">
+                  <Tag size={13} className="text-primary" />
+                  총 판매 수량 <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  name="maxQuantity"
+                  type="number"
+                  min="1"
+                  placeholder="최대 판매 수량"
+                  className="border border-border"
+                />
+                <FieldError errors={state.errors} name="maxQuantity" />
+              </div>
+
+              {/* 인당 최대 구매 수량 */}
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label className="flex items-center gap-1">
+                  <Hash size={13} className="text-primary" />
+                  인당 최대 구매 수량
+                  <span className="text-xs text-muted-foreground">(미입력 시 1개)</span>
+                </Label>
+                <Input
+                  name="maxPerUser"
+                  type="number"
+                  min="1"
+                  placeholder="1"
+                  className="border border-border"
+                />
+                <FieldError errors={state.errors} name="maxPerUser" />
+              </div>
+
+              {/* 시작/종료 일시 */}
+              <div className="sm:col-span-2 grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="flex items-center gap-1">
+                    <Clock size={13} className="text-primary" />
+                    시작 일시
+                    <span className="text-xs text-muted-foreground">(미입력 시 즉시)</span>
+                  </Label>
+                  <Input
+                    name="startAt"
+                    type="datetime-local"
+                    className="border border-border"
+                  />
+                  <FieldError errors={state.errors} name="startAt" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="flex items-center gap-1">
+                    <Clock size={13} className="text-primary" />
+                    종료 일시
+                  </Label>
+                  <Input
+                    name="endAt"
+                    type="datetime-local"
+                    className="border border-border"
+                  />
+                  <FieldError errors={state.errors} name="endAt" />
+                </div>
+              </div>
+
             </div>
-          )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label className="flex items-center gap-1">
-                <Clock size={13} className="text-primary" />시작 시간
-              </Label>
-              <Input name="start_at" value={form.start_at} onChange={handleChange} type="datetime-local" />
+            {state.errors?._root && (
+              <p className="text-destructive text-xs font-medium mt-4">{state.errors._root[0]}</p>
+            )}
+
+            <div className="flex justify-end mt-5 pt-4 border-t border-border">
+              <Button type="submit" disabled={isPending || !itemId}>
+                {isPending ? "등록 중..." : "핫딜 등록"}
+              </Button>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="flex items-center gap-1">
-                <Clock size={13} className="text-primary" />종료 시간
-              </Label>
-              <Input name="end_at" value={form.end_at} onChange={handleChange} type="datetime-local" />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label>한정 수량</Label>
-            <Input name="stock_limit" value={form.stock_limit} onChange={handleChange}
-              type="number" placeholder="비워두면 제한 없음" />
-          </div>
-
-          <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
-            <AlertCircle size={14} className="shrink-0 mt-0.5" />
-            <span>핫딜은 지정된 시간에 자동으로 시작 및 종료됩니다. 활성화 상태여야 노출됩니다.</span>
-          </div>
-
-          <Button onClick={handleSave} className="self-end">핫딜 저장</Button>
-        </CardContent>
+          </form>
+        </div>
       </Card>
     </div>
-  );
+  )
+}
+
+export default function HotDealPage() {
+  const [formKey, setFormKey] = useState(0)
+  return <HotDealForm key={formKey} onReset={() => setFormKey((k) => k + 1)} />
 }

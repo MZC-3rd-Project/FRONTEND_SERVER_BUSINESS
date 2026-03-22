@@ -24,6 +24,10 @@ export default defineConfig({
       "/api/campaigns":{
         target: "http://localhost:8086",
         changeOrigin: true,
+      },
+      "/api/v1/hot-deals":{
+        target: "http://localhost:8089",
+        changeOrigin: true,
       }
     }
 
