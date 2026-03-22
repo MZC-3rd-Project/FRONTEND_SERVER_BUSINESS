@@ -36,7 +36,7 @@ export async function createItemAction(prevState, formData) {
       })
       return { success: true }
     } catch (error) {
-      const message = error?.response?.data?.message ?? "굿즈 등록에 실패했습니다."
+      const message = error?.response?.data?.error?.message ?? "굿즈 등록에 실패했습니다."
       return { success: false, errors: { _root: [message] } }
     }
   }

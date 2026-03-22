@@ -24,7 +24,7 @@ export async function createStoreAction(prevState, formData) {
   } catch (error) {
     return {
       success: false,
-      errors: { _form: [error?.response?.data?.message ?? "서버 오류가 발생했습니다."] },
+      errors: { _form: [error?.response?.data?.error?.message ?? "서버 오류가 발생했습니다."] },
     }
   }
 }
