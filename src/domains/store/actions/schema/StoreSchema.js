@@ -6,10 +6,7 @@ export const StoreSchema = z.object({
       .max(10,"최대 10자 이상은 입력할 수 없습니다."),
   address: z.string().min(1, "주소는 필수입니다."),
   addressType: z.enum(["MAIN", "PICKUP", "RETURN", "WAREHOUSE"]),
-  contactValue: z
-      .string()
-      .min(1, "연락처는 필수입니다.")
-      .regex(/^01[0-9]{8,9}$/, "올바른 전화번호를 입력해주세요.👉 예: 01012345678"),
+  contactValue: z.string().min(1, "연락처는 필수입니다."),
   contactType: z.enum(["PHONE", "EMAIL", "KAKAO", "SNS"]),
   description: z.string()
       .max(200,"200자 이내로 작성해주세요")
