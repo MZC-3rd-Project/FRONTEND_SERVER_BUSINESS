@@ -1,6 +1,7 @@
 import { useState, useEffect, useActionState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, DollarSign, Hash, Check, Ban } from "lucide-react"
+import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -34,10 +35,11 @@ function FundingForm({ onReset }) {
   const { data: productsPayload } = useSellerProductsQuery();
   const products = productsPayload?.items ?? []
   const { data: campaignPage } = useCampaignsQuery()
-  const usingDemoFunding = import.meta.env.DEV && products.length === 0 && (campaignPage?.content ?? []).length === 0
+  const campaignItems = campaignPage?.items ?? []
+  const usingDemoFunding = import.meta.env.DEV && products.length === 0 && campaignItems.length === 0
   const sourceProducts = usingDemoFunding ? demoItems : products
   const sellerItemIds = new Set(sourceProducts.map((product) => String(product.id)))
-  const campaigns = (usingDemoFunding ? demoCampaigns : (campaignPage?.content ?? [])).filter((campaign) =>
+  const campaigns = (usingDemoFunding ? demoCampaigns : campaignItems).filter((campaign) =>
     sellerItemIds.has(String(campaign.itemId))
   )
   const cancelMutation = useMutation({
@@ -190,6 +192,9 @@ function FundingForm({ onReset }) {
                     ) : null}
 
                     <div className="mt-5 flex flex-wrap gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/business/funding/${campaign.id}`}>상세/수정</Link>
+                      </Button>
                       {isActive ? (
                         <Button
                           size="sm"

@@ -1,6 +1,7 @@
 import { useState, useEffect, useActionState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, Check } from "lucide-react"
+import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -135,6 +136,16 @@ function HotDealForm({ onReset }) {
                           평점 {item?.averageRating ?? 0} / {item?.reviewCount ?? 0}개
                         </p>
                       </div>
+                    </div>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link
+                          to={`/business/hotdeal/${item.hotDealId ?? item.id}`}
+                          state={{ hotDeal: item, hotDealId: item.hotDealId ?? item.id }}
+                        >
+                          상세 보기
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 )

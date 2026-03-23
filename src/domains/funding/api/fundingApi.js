@@ -7,6 +7,7 @@ import {
   demoGetCampaignByItemId,
   demoGetCampaignProgress,
   demoGetCampaigns,
+  demoUpdateCampaign,
   isDemoModeEnabled,
 } from "@/domains/management/mock/demoBackend.js"
 
@@ -23,6 +24,9 @@ export async function createCampaign(payload) {
 }
 
 export async function updateCampaign(campaignId, payload) {
+  if (isDemoModeEnabled()) {
+    return demoUpdateCampaign(campaignId, payload)
+  }
   try {
     const response = await apiInstance.put(`/campaigns/${campaignId}`, payload)
     return unwrapApiResponseBody(response, "펀딩 캠페인 수정에 실패했습니다.")

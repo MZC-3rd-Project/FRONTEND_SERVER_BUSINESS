@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useActionState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, Check, Music, ShoppingBag, Trash2 } from "lucide-react"
+import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -263,6 +264,15 @@ function ItemsForm({ onReset }) {
                     </div>
 
                     <div className="mt-5 flex flex-wrap gap-2">
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                      >
+                        <Link to={`/business/items/${item.id}`} state={{ itemType: getItemType(item) }}>
+                          상세/수정
+                        </Link>
+                      </Button>
                       {nextStatus ? (
                         <Button
                           size="sm"

@@ -63,6 +63,7 @@ export const demoCampaigns = [
 
 export const demoHotDealItems = [
   {
+    hotDealId: 86001,
     id: 93001,
     title: "돈모아 봄 한정 포토팩",
     itemType: "GOODS",
@@ -72,6 +73,7 @@ export const demoHotDealItems = [
     reviewCount: 92,
   },
   {
+    hotDealId: 86002,
     id: 93002,
     title: "돈모아 쇼케이스 얼리버드",
     itemType: "PERFORMANCE",

@@ -1,9 +1,17 @@
 import { useQuery } from "@tanstack/react-query"
 import { shouldRetryRequest } from "@/common/api/queryRetry.js"
-import { getSellerProducts, getCategories, getMyStore } from "../api/itemsApi.js"
+import {
+  getSellerGoodsDetail,
+  getSellerPerformanceDetail,
+  getSellerProducts,
+  getCategories,
+  getMyStore,
+} from "../api/itemsApi.js"
 import {
   mapCategoryTreePayload,
   mapMyStorePayload,
+  mapSellerGoodsDetailPayload,
+  mapSellerPerformanceDetailPayload,
   mapSellerProductListPayload,
 } from "../lib/itemMappers.js"
 
@@ -12,6 +20,7 @@ export const itemKeys = {
   products: () => [...itemKeys.all, "seller-products"],
   categories: () => [...itemKeys.all, "categories"],
   store: () => ["store", "me"],
+  detail: (itemType, itemId) => [...itemKeys.all, "detail", itemType, itemId],
 }
 
 export function useSellerProductsQuery() {
@@ -36,6 +45,21 @@ export function useMyStoreQuery() {
   return useQuery({
     queryKey: itemKeys.store(),
     queryFn: async () => mapMyStorePayload(await getMyStore()),
+    retry: shouldRetryRequest,
+    staleTime: 30_000,
+  })
+}
+
+export function useSellerItemDetailQuery(itemId, itemType) {
+  return useQuery({
+    queryKey: itemKeys.detail(itemType, itemId),
+    queryFn: async () => {
+      if (String(itemType).toUpperCase() === "PERFORMANCE") {
+        return mapSellerPerformanceDetailPayload(await getSellerPerformanceDetail(itemId))
+      }
+      return mapSellerGoodsDetailPayload(await getSellerGoodsDetail(itemId))
+    },
+    enabled: Boolean(itemId && itemType),
     retry: shouldRetryRequest,
     staleTime: 30_000,
   })

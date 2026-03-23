@@ -6,8 +6,12 @@ import {
   demoDeleteProduct,
   demoGetCategories,
   demoGetMyStore,
+  demoGetSellerGoodsDetail,
+  demoGetSellerPerformanceDetail,
   demoGetSellerProducts,
   demoToggleProductStatus,
+  demoUpdateGoods,
+  demoUpdatePerformance,
   isDemoModeEnabled,
 } from "@/domains/management/mock/demoBackend.js"
 
@@ -101,5 +105,57 @@ export async function deleteProduct(itemId) {
     return unwrapApiResponseBody(response, "상품 삭제에 실패했습니다.")
   } catch (error) {
     throw normalizeApiError(error, "상품 삭제에 실패했습니다.")
+  }
+}
+
+export async function getSellerGoodsDetail(itemId) {
+  if (isDemoModeEnabled()) {
+    return demoGetSellerGoodsDetail(itemId)
+  }
+
+  try {
+    const response = await apiInstance.get(`/seller/goods/${itemId}`)
+    return unwrapApiResponseBody(response, "굿즈 상세를 불러오지 못했습니다.")
+  } catch (error) {
+    throw normalizeApiError(error, "굿즈 상세 조회에 실패했습니다.")
+  }
+}
+
+export async function getSellerPerformanceDetail(itemId) {
+  if (isDemoModeEnabled()) {
+    return demoGetSellerPerformanceDetail(itemId)
+  }
+
+  try {
+    const response = await apiInstance.get(`/seller/performances/${itemId}`)
+    return unwrapApiResponseBody(response, "공연 상세를 불러오지 못했습니다.")
+  } catch (error) {
+    throw normalizeApiError(error, "공연 상세 조회에 실패했습니다.")
+  }
+}
+
+export async function updateGoods(itemId, payload) {
+  if (isDemoModeEnabled()) {
+    return demoUpdateGoods(itemId, payload)
+  }
+
+  try {
+    const response = await apiInstance.put(`/goods/${itemId}`, payload)
+    return unwrapApiResponseBody(response, "굿즈 수정에 실패했습니다.")
+  } catch (error) {
+    throw normalizeApiError(error, "굿즈 수정에 실패했습니다.")
+  }
+}
+
+export async function updatePerformance(itemId, payload) {
+  if (isDemoModeEnabled()) {
+    return demoUpdatePerformance(itemId, payload)
+  }
+
+  try {
+    const response = await apiInstance.put(`/performances/${itemId}`, payload)
+    return unwrapApiResponseBody(response, "공연 수정에 실패했습니다.")
+  } catch (error) {
+    throw normalizeApiError(error, "공연 수정에 실패했습니다.")
   }
 }

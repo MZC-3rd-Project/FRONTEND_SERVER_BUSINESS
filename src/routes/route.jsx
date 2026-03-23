@@ -2,8 +2,11 @@ import { Routes, Route, Navigate } from "react-router";
 import BusinessLayout from "@/components/layout/BusinessLayout.jsx";
 import StoreCreatePage from "@/domains/store/page/StoreCreate.jsx";
 import ItemsPage from "@/domains/items/page/Items.jsx";
+import ItemDetailPage from "@/domains/items/page/ItemDetail.jsx";
 import FundingPage from "@/domains/funding/page/Funding.jsx";
+import FundingDetailPage from "@/domains/funding/page/FundingDetail.jsx";
 import HotDealPage from "@/domains/hotdeal/page/HotDeal.jsx";
+import HotDealDetailPage from "@/domains/hotdeal/page/HotDealDetail.jsx";
 import AnalyticsPage from "@/domains/analytics/page/Analytics.jsx";
 import GatewayPage from "@/domains/gateway/page/Gateway.jsx";
 import LoginPage from "@/domains/auth/page/LoginPage.jsx";
@@ -46,8 +49,11 @@ function BusinessRoutes() {
         <Route path="/business/dashboard" element={<AnalyticsPage />} />
         <Route path="/business/store" element={<StoreCreatePage />} />
         <Route path="/business/items" element={<ItemsPage />} />
+        <Route path="/business/items/:itemId" element={<ItemDetailPage />} />
         <Route path="/business/funding" element={<FundingPage />} />
+        <Route path="/business/funding/:campaignId" element={<FundingDetailPage />} />
         <Route path="/business/hotdeal" element={<HotDealPage />} />
+        <Route path="/business/hotdeal/:hotDealId" element={<HotDealDetailPage />} />
         <Route path="/business/reviews" element={<ReviewsPage />} />
         <Route path="/business/messages" element={<ChatInboxPage />} />
         <Route path="/business/analytics" element={<Navigate to="/business/dashboard" replace />} />

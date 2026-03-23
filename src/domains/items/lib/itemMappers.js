@@ -101,3 +101,72 @@ export function mapMyStorePayload(raw) {
     contacts: Array.isArray(raw?.contacts) ? raw.contacts : [],
   }
 }
+
+function mapItemOption(option = {}) {
+  return {
+    id: toId(option?.id),
+    optionName: toText(option?.optionName, "기본"),
+    additionalPrice: toNullableNumber(option?.additionalPrice) ?? 0,
+    stockQuantity: toNumber(option?.stockQuantity, 0),
+  }
+}
+
+function mapShippingInfo(info = {}) {
+  return {
+    shippingFee: toNullableNumber(info?.shippingFee) ?? 0,
+    estimatedDays: toNumber(info?.estimatedDays, 3),
+    freeShippingThreshold: toNullableNumber(info?.freeShippingThreshold),
+    returnPolicy: toText(info?.returnPolicy),
+    carrier: toText(info?.carrier),
+    shipFrom: toText(info?.shipFrom),
+    returnAddress: toText(info?.returnAddress),
+    returnShippingFee: toNullableNumber(info?.returnShippingFee),
+    exchangeShippingFee: toNullableNumber(info?.exchangeShippingFee),
+    shippingNotice: toText(info?.shippingNotice),
+  }
+}
+
+function mapSeatGrade(grade = {}) {
+  return {
+    id: toId(grade?.id),
+    gradeName: toText(grade?.gradeName, "일반"),
+    price: toNullableNumber(grade?.price) ?? 0,
+    totalQuantity: toNumber(grade?.totalQuantity, 0),
+    fundingQuantity: toNumber(grade?.fundingQuantity, 0),
+  }
+}
+
+export function mapSellerGoodsDetailPayload(raw) {
+  if (!raw) return null
+
+  return {
+    ...mapSellerProductSummary(raw),
+    description: toText(raw?.description),
+    categoryId: toId(raw?.categoryId),
+    categoryName: toText(raw?.categoryName),
+    options: Array.isArray(raw?.options) ? raw.options.map(mapItemOption) : [],
+    shippingInfo: mapShippingInfo(raw?.shippingInfo ?? {}),
+  }
+}
+
+export function mapSellerPerformanceDetailPayload(raw) {
+  if (!raw) return null
+
+  return {
+    ...mapSellerProductSummary(raw),
+    description: toText(raw?.description),
+    categoryId: toId(raw?.categoryId),
+    categoryName: toText(raw?.categoryName),
+    venue: toText(raw?.venue),
+    performanceDate: raw?.performanceDate ?? "",
+    performanceTime: raw?.performanceTime ?? "",
+    totalSeats: toNumber(raw?.totalSeats, 0),
+    runningTimeMinutes: toNullableNumber(raw?.runningTimeMinutes),
+    ageLimit: toText(raw?.ageLimit),
+    venueAddress: toText(raw?.venueAddress),
+    bookingNotice: toText(raw?.bookingNotice),
+    organizer: toText(raw?.organizer),
+    host: toText(raw?.host),
+    seatGrades: Array.isArray(raw?.seatGrades) ? raw.seatGrades.map(mapSeatGrade) : [],
+  }
+}

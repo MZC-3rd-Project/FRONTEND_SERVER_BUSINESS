@@ -191,6 +191,86 @@ export function demoGetSellerProducts() {
   return { items: seededProducts }
 }
 
+function buildDefaultGoodsDetail(item) {
+  const option = item?.options?.[0] ?? {
+    id: `${item?.id}-opt-1`,
+    optionName: "기본",
+    additionalPrice: 0,
+    stockQuantity: item?.stockQuantity ?? 50,
+  }
+  const shippingInfo = item?.shippingInfo ?? {
+    shippingFee: 0,
+    estimatedDays: 3,
+  }
+
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description ?? "",
+    price: item.price,
+    status: item.status,
+    itemType: "GOODS",
+    averageRating: item.averageRating ?? 0,
+    reviewCount: item.reviewCount ?? 0,
+    categoryId: item.categoryId ?? 101,
+    categoryName: "의류",
+    sellerId: DEMO_USER_ID,
+    storeId: item.storeId ?? 70001,
+    options: [option],
+    shippingInfo,
+  }
+}
+
+function buildDefaultPerformanceDetail(item) {
+  const seatGrade = item?.seatGrades?.[0] ?? {
+    id: `${item?.id}-seat-1`,
+    gradeName: "일반",
+    price: item.price,
+    totalQuantity: item.totalSeats ?? 300,
+    fundingQuantity: 0,
+  }
+
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description ?? "",
+    price: item.price,
+    status: item.status,
+    itemType: "PERFORMANCE",
+    averageRating: item.averageRating ?? 0,
+    reviewCount: item.reviewCount ?? 0,
+    categoryId: item.categoryId ?? 201,
+    categoryName: "콘서트",
+    sellerId: DEMO_USER_ID,
+    storeId: item.storeId ?? 70001,
+    venue: item.venue ?? "돈모아 홀",
+    performanceDate: item.performanceDate ?? "2026-04-30",
+    performanceTime: item.performanceTime ?? "19:00:00",
+    totalSeats: item.totalSeats ?? 300,
+    runningTimeMinutes: item.runningTimeMinutes ?? 110,
+    ageLimit: item.ageLimit ?? "전체 관람가",
+    venueAddress: item.venueAddress ?? "서울특별시 마포구",
+    bookingNotice: item.bookingNotice ?? "공연 시작 후 입장이 제한될 수 있습니다.",
+    organizer: item.organizer ?? "돈모아",
+    host: item.host ?? "돈모아 라이브",
+    seatGrades: [seatGrade],
+  }
+}
+
+export function demoGetSellerGoodsDetail(itemId) {
+  const item = demoGetSellerProducts().items.find(
+    (product) => Number(product.id) === Number(itemId) && product.itemType === "GOODS"
+  )
+  return item ? buildDefaultGoodsDetail(item) : null
+}
+
+export function demoGetSellerPerformanceDetail(itemId) {
+  const item = demoGetSellerProducts().items.find(
+    (product) => Number(product.id) === Number(itemId) && product.itemType === "PERFORMANCE"
+  )
+  return item ? buildDefaultPerformanceDetail(item) : null
+}
+
 export function demoCreateGoods(payload) {
   const nextState = updateState((state) => {
     const itemId = nextId(state, "item")
@@ -256,6 +336,57 @@ export function demoDeleteProduct(itemId) {
   return { success: true }
 }
 
+export function demoUpdateGoods(itemId, payload) {
+  const nextState = updateState((state) => {
+    state.products = state.products.map((item) =>
+      Number(item.id) === Number(itemId)
+        ? {
+            ...item,
+            title: payload.title ?? item.title,
+            description: payload.description ?? item.description,
+            price: payload.price ?? item.price,
+            categoryId: payload.categoryId ?? item.categoryId,
+            options: payload.options ?? item.options,
+            shippingInfo: payload.shippingInfo ?? item.shippingInfo,
+          }
+        : item
+    )
+    return state
+  })
+
+  return demoGetSellerGoodsDetail(itemId) ?? nextState.products.find((item) => Number(item.id) === Number(itemId)) ?? null
+}
+
+export function demoUpdatePerformance(itemId, payload) {
+  const nextState = updateState((state) => {
+    state.products = state.products.map((item) =>
+      Number(item.id) === Number(itemId)
+        ? {
+            ...item,
+            title: payload.title ?? item.title,
+            description: payload.description ?? item.description,
+            price: payload.price ?? item.price,
+            categoryId: payload.categoryId ?? item.categoryId,
+            venue: payload.venue ?? item.venue,
+            performanceDate: payload.performanceDate ?? item.performanceDate,
+            performanceTime: payload.performanceTime ?? item.performanceTime,
+            totalSeats: payload.totalSeats ?? item.totalSeats,
+            runningTimeMinutes: payload.runningTimeMinutes ?? item.runningTimeMinutes,
+            ageLimit: payload.ageLimit ?? item.ageLimit,
+            venueAddress: payload.venueAddress ?? item.venueAddress,
+            bookingNotice: payload.bookingNotice ?? item.bookingNotice,
+            organizer: payload.organizer ?? item.organizer,
+            host: payload.host ?? item.host,
+            seatGrades: payload.seatGrades ?? item.seatGrades,
+          }
+        : item
+    )
+    return state
+  })
+
+  return demoGetSellerPerformanceDetail(itemId) ?? nextState.products.find((item) => Number(item.id) === Number(itemId)) ?? null
+}
+
 export function demoGetCampaigns() {
   const state = readState()
   return {
@@ -316,6 +447,23 @@ export function demoCancelCampaign(campaignId) {
 
 export function demoGetCampaignById(campaignId) {
   return demoGetCampaigns().content.find((campaign) => Number(campaign.id) === Number(campaignId)) ?? null
+}
+
+export function demoUpdateCampaign(campaignId, payload) {
+  const nextState = updateState((state) => {
+    state.campaigns = state.campaigns.map((campaign) =>
+      Number(campaign.id) === Number(campaignId)
+        ? {
+            ...campaign,
+            ...payload,
+            updatedAt: new Date().toISOString(),
+          }
+        : campaign
+    )
+    return state
+  })
+
+  return nextState.campaigns.find((campaign) => Number(campaign.id) === Number(campaignId)) ?? null
 }
 
 export function demoGetCampaignByItemId(itemId) {
