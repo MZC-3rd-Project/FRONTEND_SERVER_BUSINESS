@@ -6,6 +6,8 @@ import {
 import { TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign, BarChart3 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card.js";
 import { Badge } from "@/components/ui/badge.js";
+import PageIntro from "@/components/layout/PageIntro.jsx";
+import { cn } from "@/lib/utils";
 
 const DAILY = [
   { date: "3/8",  revenue: 320000, orders: 28 },
@@ -35,7 +37,7 @@ const TOP_ITEMS = [
   { name: "제주 한라봉",     sales: 55,  revenue: 715000 },
   { name: "유기농 당근",     sales: 41,  revenue: 369000 },
 ];
-const COLORS = ["rgb(93,171,223)", "rgb(30,157,241)", "rgb(29,161,242)", "rgb(227,236,246)"];
+const COLORS = ["#2563eb", "#38bdf8", "#14b8a6", "#dbeafe"];
 const PERIODS = ["7일", "30일", "90일"];
 
 const TOOLTIP_STYLE = {
@@ -46,7 +48,8 @@ const TOOLTIP_STYLE = {
   color: "var(--foreground)",
 };
 
-function StatCard({ icon: Icon, label, value, sub, trend }) {
+function StatCard({ icon, label, value, sub, trend }) {
+  const Icon = icon;
   const up = trend >= 0;
   return (
     <Card>
@@ -79,22 +82,39 @@ export default function AnalyticsPage() {
   const totalOrders = DAILY.reduce((s, d) => s + d.orders, 0);
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">판매 분석</h1>
-          <p className="text-muted-foreground text-sm mt-1">매출 및 주문 현황을 확인하세요.</p>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageIntro
+        eyebrow="Sales Dashboard"
+        title="판매 대시보드"
+        description="매출, 주문, 고객 유입, 카테고리 반응을 한 화면에서 먼저 확인하는 메인 운영 화면입니다. 상세 분석보다 오늘의 상태를 빠르게 읽는 데 초점을 맞췄습니다."
+        meta={[
+          `${(totalRevenue / 10000).toFixed(0)}만원 매출`,
+          `${totalOrders}건 주문`,
+          `${period} 기준`,
+        ]}
+      >
+        <div className="metric-chip rounded-[1.75rem] px-4 py-4">
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+            Period
+          </p>
+          <div className="mt-3 flex gap-2">
+            {PERIODS.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={cn(
+                "flex-1 rounded-full px-3 py-2 text-xs font-semibold transition-all",
+                period === p
+                    ? "bg-primary text-primary-foreground shadow-[0_12px_24px_rgba(29,161,242,0.18)]"
+                    : "bg-white/72 text-muted-foreground hover:bg-accent hover:text-foreground dark:bg-slate-950/38"
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-1 bg-muted/50 p-1 rounded-lg border border-border">
-          {PERIODS.map((p) => (
-            <button key={p} onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors
-                ${period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {p}
-            </button>
-          ))}
-        </div>
-      </div>
+      </PageIntro>
 
       {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
