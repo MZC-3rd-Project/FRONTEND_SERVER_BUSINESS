@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { Link, useLocation, useParams } from "react-router"
 import { Save, Store, Ticket } from "lucide-react"
 
@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  itemKeys,
   useSellerItemDetailQuery,
   useSellerProductsQuery,
 } from "@/domains/items/hook/useItemsQuery.js"
@@ -35,72 +34,46 @@ function getRouteItemType(locationState, itemSummary) {
   return ""
 }
 
-export default function ItemDetailPage() {
-  const { itemId } = useParams()
-  const location = useLocation()
-  const { data: productsPayload } = useSellerProductsQuery()
-  const { data: categoryTree = [] } = useCategoriesQuery()
-  const products = productsPayload?.items ?? []
-  const itemSummary = products.find((item) => String(item.id) === String(itemId)) ?? null
-  const itemType = getRouteItemType(location.state, itemSummary)
-  const detailQuery = useSellerItemDetailQuery(itemId, itemType)
-  const item = detailQuery.data
-
-  const goodsCategories = useMemo(
-    () =>
-      categoryTree
-        .filter((category) => category.name !== "공연/티켓")
-        .flatMap((category) => flattenTree(category)),
-    [categoryTree]
-  )
-  const performanceCategories = useMemo(() => {
-    const perfNode = categoryTree.find((category) => category.name === "공연/티켓")
-    return perfNode ? flattenTree(perfNode) : []
-  }, [categoryTree])
-
-  const [form, setForm] = useState(null)
-
-  useEffect(() => {
-    if (!item) return
-
-    if (item.itemType === "PERFORMANCE") {
-      const firstSeatGrade = item.seatGrades?.[0] ?? {}
-      setForm({
-        title: item.title ?? "",
-        categoryId: String(item.categoryId ?? ""),
-        price: String(item.price ?? 0),
-        description: item.description ?? "",
-        venue: item.venue ?? "",
-        performanceDate: item.performanceDate ?? "",
-        performanceTime: String(item.performanceTime ?? "").slice(0, 5),
-        totalSeats: String(item.totalSeats ?? 0),
-        runningTimeMinutes: item.runningTimeMinutes ? String(item.runningTimeMinutes) : "",
-        ageLimit: item.ageLimit ?? "",
-        venueAddress: item.venueAddress ?? "",
-        bookingNotice: item.bookingNotice ?? "",
-        organizer: item.organizer ?? "",
-        host: item.host ?? "",
-        gradeName: firstSeatGrade.gradeName ?? "일반",
-        gradePrice: String(firstSeatGrade.price ?? item.price ?? 0),
-      })
-      return
-    }
-
-    const firstOption = item?.options?.[0] ?? {}
-    const shippingInfo = item?.shippingInfo ?? {}
-    setForm({
+function buildItemForm(item) {
+  if (item.itemType === "PERFORMANCE") {
+    const firstSeatGrade = item.seatGrades?.[0] ?? {}
+    return {
       title: item.title ?? "",
       categoryId: String(item.categoryId ?? ""),
       price: String(item.price ?? 0),
       description: item.description ?? "",
-      optionName: firstOption.optionName ?? "기본",
-      additionalPrice: String(firstOption.additionalPrice ?? 0),
-      stockQuantity: String(firstOption.stockQuantity ?? 0),
-      shippingFee: String(shippingInfo.shippingFee ?? 0),
-      estimatedDays: String(shippingInfo.estimatedDays ?? 3),
-    })
-  }, [item])
+      venue: item.venue ?? "",
+      performanceDate: item.performanceDate ?? "",
+      performanceTime: String(item.performanceTime ?? "").slice(0, 5),
+      totalSeats: String(item.totalSeats ?? 0),
+      runningTimeMinutes: item.runningTimeMinutes ? String(item.runningTimeMinutes) : "",
+      ageLimit: item.ageLimit ?? "",
+      venueAddress: item.venueAddress ?? "",
+      bookingNotice: item.bookingNotice ?? "",
+      organizer: item.organizer ?? "",
+      host: item.host ?? "",
+      gradeName: firstSeatGrade.gradeName ?? "일반",
+      gradePrice: String(firstSeatGrade.price ?? item.price ?? 0),
+    }
+  }
 
+  const firstOption = item?.options?.[0] ?? {}
+  const shippingInfo = item?.shippingInfo ?? {}
+  return {
+    title: item.title ?? "",
+    categoryId: String(item.categoryId ?? ""),
+    price: String(item.price ?? 0),
+    description: item.description ?? "",
+    optionName: firstOption.optionName ?? "기본",
+    additionalPrice: String(firstOption.additionalPrice ?? 0),
+    stockQuantity: String(firstOption.stockQuantity ?? 0),
+    shippingFee: String(shippingInfo.shippingFee ?? 0),
+    estimatedDays: String(shippingInfo.estimatedDays ?? 3),
+  }
+}
+
+function ItemDetailEditor({ item, categories, itemId }) {
+  const [form, setForm] = useState(() => buildItemForm(item))
   const updateGoodsMutation = useUpdateGoodsMutation(itemId)
   const updatePerformanceMutation = useUpdatePerformanceMutation(itemId)
 
@@ -161,52 +134,8 @@ export default function ItemDetailPage() {
   const saveBusy = updateGoodsMutation.isPending || updatePerformanceMutation.isPending
   const saveError = updateGoodsMutation.error || updatePerformanceMutation.error
 
-  if (detailQuery.isLoading || !form) {
-    return (
-      <div className="mx-auto flex min-h-[40vh] max-w-3xl items-center justify-center">
-        <div className="glass-panel rounded-[1.8rem] px-6 py-8 text-center text-sm text-muted-foreground">
-          상품 상세를 불러오는 중입니다.
-        </div>
-      </div>
-    )
-  }
-
-  if (!item) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Alert variant="destructive">
-          <AlertDescription>상품 상세를 찾을 수 없습니다.</AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
-
-  const categories = item.itemType === "PERFORMANCE" ? performanceCategories : goodsCategories
-
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <PageIntro
-        eyebrow="Item Detail"
-        title={item.title}
-        description="상품 상세와 수정 화면입니다. 관리 목록에서 들어온 뒤 필요한 필드만 바로 수정할 수 있습니다."
-        meta={[
-          item.itemType === "PERFORMANCE" ? "공연" : "굿즈",
-          item.status ?? "상태 미정",
-          item.priceText ?? "-",
-        ]}
-      >
-        <div className="metric-chip rounded-[1.75rem] px-5 py-5">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-            Quick actions
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="outline">
-              <Link to="/business/items">목록으로</Link>
-            </Button>
-          </div>
-        </div>
-      </PageIntro>
-
+    <>
       {saveError ? (
         <Alert variant="destructive">
           <AlertDescription>
@@ -346,6 +275,84 @@ export default function ItemDetailPage() {
           </div>
         </CardContent>
       </Card>
+    </>
+  )
+}
+
+export default function ItemDetailPage() {
+  const { itemId } = useParams()
+  const location = useLocation()
+  const { data: productsPayload } = useSellerProductsQuery()
+  const { data: categoryTree = [] } = useCategoriesQuery()
+  const products = productsPayload?.items ?? []
+  const itemSummary = products.find((item) => String(item.id) === String(itemId)) ?? null
+  const itemType = getRouteItemType(location.state, itemSummary)
+  const detailQuery = useSellerItemDetailQuery(itemId, itemType)
+  const item = detailQuery.data
+
+  const goodsCategories = useMemo(
+    () =>
+      categoryTree
+        .filter((category) => category.name !== "공연/티켓")
+        .flatMap((category) => flattenTree(category)),
+    [categoryTree]
+  )
+  const performanceCategories = useMemo(() => {
+    const perfNode = categoryTree.find((category) => category.name === "공연/티켓")
+    return perfNode ? flattenTree(perfNode) : []
+  }, [categoryTree])
+
+  if (detailQuery.isLoading) {
+    return (
+      <div className="mx-auto flex min-h-[40vh] max-w-3xl items-center justify-center">
+        <div className="glass-panel rounded-[1.8rem] px-6 py-8 text-center text-sm text-muted-foreground">
+          상품 상세를 불러오는 중입니다.
+        </div>
+      </div>
+    )
+  }
+
+  if (!item) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <Alert variant="destructive">
+          <AlertDescription>상품 상세를 찾을 수 없습니다.</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  const categories = item.itemType === "PERFORMANCE" ? performanceCategories : goodsCategories
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+      <PageIntro
+        eyebrow="Item Detail"
+        title={item.title}
+        description="상품 상세와 수정 화면입니다. 관리 목록에서 들어온 뒤 필요한 필드만 바로 수정할 수 있습니다."
+        meta={[
+          item.itemType === "PERFORMANCE" ? "공연" : "굿즈",
+          item.status ?? "상태 미정",
+          item.priceText ?? "-",
+        ]}
+      >
+        <div className="metric-chip rounded-[1.75rem] px-5 py-5">
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+            Quick actions
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link to="/business/items">목록으로</Link>
+            </Button>
+          </div>
+        </div>
+      </PageIntro>
+      <ItemDetailEditor
+        key={`${item.id}-${item.updatedAt ?? ""}`}
+        item={item}
+        categories={categories}
+        itemId={itemId}
+      />
     </div>
   )
 }

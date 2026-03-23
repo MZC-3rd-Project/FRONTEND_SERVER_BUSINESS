@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link, useParams } from "react-router"
 import { Ban, Save } from "lucide-react"
@@ -14,27 +14,23 @@ import { fundingKeys, useCampaignQuery } from "@/domains/funding/hook/useFunding
 import { cancelCampaign, updateCampaign } from "@/domains/funding/api/fundingApi.js"
 import PageIntro from "@/components/layout/PageIntro.jsx"
 
-export default function FundingDetailPage() {
-  const { campaignId } = useParams()
-  const queryClient = useQueryClient()
-  const detailQuery = useCampaignQuery(campaignId)
-  const campaign = detailQuery.data
-  const [form, setForm] = useState(null)
+function buildCampaignForm(campaign) {
+  return {
+    title: campaign.title ?? "",
+    summary: campaign.summary ?? "",
+    makerName: campaign.makerName ?? "",
+    category: campaign.category ?? "",
+    goalAmount: String(campaign.goalAmount ?? 0),
+    goalQuantity: campaign.goalQuantity ? String(campaign.goalQuantity) : "",
+    minAmount: campaign.minAmount ? String(campaign.minAmount) : "",
+    startAt: campaign.startAt?.slice?.(0, 16) ?? "",
+    endAt: campaign.endAt?.slice?.(0, 16) ?? "",
+  }
+}
 
-  useEffect(() => {
-    if (!campaign) return
-    setForm({
-      title: campaign.title ?? "",
-      summary: campaign.summary ?? "",
-      makerName: campaign.makerName ?? "",
-      category: campaign.category ?? "",
-      goalAmount: String(campaign.goalAmount ?? 0),
-      goalQuantity: campaign.goalQuantity ? String(campaign.goalQuantity) : "",
-      minAmount: campaign.minAmount ? String(campaign.minAmount) : "",
-      startAt: campaign.startAt?.slice?.(0, 16) ?? "",
-      endAt: campaign.endAt?.slice?.(0, 16) ?? "",
-    })
-  }, [campaign])
+function FundingDetailEditor({ campaign, campaignId }) {
+  const queryClient = useQueryClient()
+  const [form, setForm] = useState(() => buildCampaignForm(campaign))
 
   const updateMutation = useMutation({
     mutationFn: (payload) => updateCampaign(campaignId, payload),
@@ -75,52 +71,8 @@ export default function FundingDetailPage() {
     await cancelMutation.mutateAsync("seller-console")
   }
 
-  if (detailQuery.isLoading || !form) {
-    return (
-      <div className="mx-auto flex min-h-[40vh] max-w-3xl items-center justify-center">
-        <div className="glass-panel rounded-[1.8rem] px-6 py-8 text-center text-sm text-muted-foreground">
-          펀딩 상세를 불러오는 중입니다.
-        </div>
-      </div>
-    )
-  }
-
-  if (!campaign) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Alert variant="destructive">
-          <AlertDescription>펀딩 상세를 찾을 수 없습니다.</AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
-
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <PageIntro
-        eyebrow="Funding Detail"
-        title={campaign.title}
-        description="펀딩 상세와 수정 화면입니다. 기본 설정을 조정하고 진행 중인 캠페인은 여기서 취소할 수 있습니다."
-        meta={[campaign.status, campaign.fundingType, campaign.progressLabel]}
-      >
-        <div className="metric-chip rounded-[1.75rem] px-5 py-5">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-            Quick actions
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="outline">
-              <Link to="/business/funding">목록으로</Link>
-            </Button>
-            {campaign.statusCode === "ACTIVE" ? (
-              <Button size="sm" variant="destructive" onClick={handleCancel} disabled={cancelMutation.isPending}>
-                <Ban size={14} />
-                캠페인 취소
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </PageIntro>
-
+    <>
       {(updateMutation.error || cancelMutation.error) ? (
         <Alert variant="destructive">
           <AlertDescription>
@@ -172,7 +124,13 @@ export default function FundingDetailPage() {
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-end gap-2">
+            {campaign.statusCode === "ACTIVE" ? (
+              <Button size="sm" variant="destructive" onClick={handleCancel} disabled={cancelMutation.isPending}>
+                <Ban size={14} />
+                캠페인 취소
+              </Button>
+            ) : null}
             <Button onClick={handleSubmit} disabled={updateMutation.isPending}>
               <Save size={14} />
               {updateMutation.isPending ? "저장 중..." : "변경 저장"}
@@ -180,6 +138,54 @@ export default function FundingDetailPage() {
           </div>
         </CardContent>
       </Card>
+    </>
+  )
+}
+
+export default function FundingDetailPage() {
+  const { campaignId } = useParams()
+  const detailQuery = useCampaignQuery(campaignId)
+  const campaign = detailQuery.data
+  if (detailQuery.isLoading || !campaign) {
+    return (
+      <div className="mx-auto flex min-h-[40vh] max-w-3xl items-center justify-center">
+        <div className="glass-panel rounded-[1.8rem] px-6 py-8 text-center text-sm text-muted-foreground">
+          펀딩 상세를 불러오는 중입니다.
+        </div>
+      </div>
+    )
+  }
+
+  if (!campaign) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <Alert variant="destructive">
+          <AlertDescription>펀딩 상세를 찾을 수 없습니다.</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+      <PageIntro
+        eyebrow="Funding Detail"
+        title={campaign.title}
+        description="펀딩 상세와 수정 화면입니다. 기본 설정을 조정하고 진행 중인 캠페인은 여기서 취소할 수 있습니다."
+        meta={[campaign.status, campaign.fundingType, campaign.progressLabel]}
+      >
+        <div className="metric-chip rounded-[1.75rem] px-5 py-5">
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+            Quick actions
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link to="/business/funding">목록으로</Link>
+            </Button>
+          </div>
+        </div>
+      </PageIntro>
+      <FundingDetailEditor key={`${campaign.id}-${campaign.updatedAt ?? ""}`} campaign={campaign} campaignId={campaignId} />
     </div>
   )
 }
