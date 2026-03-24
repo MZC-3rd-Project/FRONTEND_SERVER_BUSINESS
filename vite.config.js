@@ -9,26 +9,10 @@ export default defineConfig({
   server: {
     port: 3001,
     proxy: {
-      "/api/store": {
-        target: "http://localhost:8072",
+      "/api": {
+        target: "http://localhost:18081",
         changeOrigin: true,
       },
-      "/api/products": {
-        target: "http://localhost:8084",
-        changeOrigin: true,
-      },
-      "/api/funding":{
-        target: "http://localhost:8086",
-        changeOrigin: true,
-      },
-      "/api/campaigns":{
-        target: "http://localhost:8086",
-        changeOrigin: true,
-      },
-      "/api/v1/hot-deals":{
-        target: "http://localhost:8089",
-        changeOrigin: true,
-      }
     }
 
   },
