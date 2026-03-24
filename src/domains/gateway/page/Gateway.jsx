@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card.js";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert.js";
 import { Badge } from "@/components/ui/badge.js";
 import { Separator } from "@/components/ui/separator.js";
+import PageIntro from "@/components/layout/PageIntro.jsx";
 
 const STATUS_ITEMS = [
   { label: "API 연결",   status: "정상",   ok: true },
@@ -22,6 +23,7 @@ export default function GatewayPage() {
   const [selectedEvents, setSelectedEvents] = useState(["주문 생성", "결제 완료"]);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const healthyCount = STATUS_ITEMS.filter((item) => item.ok).length;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(apiKey);
@@ -35,21 +37,39 @@ export default function GatewayPage() {
   const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">게이트웨이</h1>
-        <p className="text-muted-foreground text-sm mt-1">API 연동 및 서비스 상태를 관리하세요.</p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageIntro
+        eyebrow="Integration Settings"
+        title="연동 설정"
+        description="외부 서비스 연동과 보안 키, 웹훅 이벤트를 운영자 시점에서 차분하게 다루도록 재정렬했습니다. 중요한 상태와 액션을 분리해 실수 확률을 낮추는 방향입니다."
+        meta={[
+          `정상 서비스 ${healthyCount}/${STATUS_ITEMS.length}`,
+          `이벤트 선택 ${selectedEvents.length}개`,
+          saved ? "설정 저장됨" : "설정 대기",
+        ]}
+      >
+        <div className="metric-chip rounded-[1.75rem] px-5 py-5">
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
+            Integration state
+          </p>
+          <p className="mt-3 text-lg font-semibold text-foreground">
+            보안 키와 웹훅 이벤트를 분리 관리
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            저장 전후 상태를 알림으로 분명하게 보여줍니다.
+          </p>
+        </div>
+      </PageIntro>
 
       {saved && (
-        <Alert className="mb-4">
+        <Alert>
           <AlertTitle>저장 완료</AlertTitle>
           <AlertDescription>설정이 저장되었습니다.</AlertDescription>
         </Alert>
       )}
 
-      {/* Service Status */}
-      <Card className="mb-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
         <CardContent className="p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Shield size={15} className="text-primary" />서비스 상태
@@ -69,8 +89,7 @@ export default function GatewayPage() {
         </CardContent>
       </Card>
 
-      {/* API Key */}
-      <Card className="mb-4">
+      <Card>
         <CardContent className="p-5">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Key size={15} className="text-primary" />API Key
@@ -90,8 +109,8 @@ export default function GatewayPage() {
           </p>
         </CardContent>
       </Card>
+      </div>
 
-      {/* Webhook */}
       <Card>
         <CardContent className="p-5 flex flex-col gap-4">
           <h3 className="text-sm font-semibold flex items-center gap-2">

@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {loginAction} from "@/domains/auth/actions/loginAction.js";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 
 export default function LoginPage() {
@@ -18,32 +20,27 @@ export default function LoginPage() {
     }, [state.success, navigate])
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4">
-            <div className="w-full max-w-sm">
+        <div className="reveal-up">
+            <Card className="surface-hero overflow-hidden">
+                <CardContent className="p-6 sm:p-8">
+                    <Badge variant="outline">돈모아 로그인</Badge>
 
-                {/* 로고 / 타이틀 영역 */}
-                <div className="mb-8 text-center">
-                    <h1 className="text-2xl font-bold text-foreground tracking-tight">
-                        로그인
-                    </h1>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                        계정에 로그인하여 서비스를 이용하세요.
-                    </p>
-                </div>
+                    <div className="mt-5 mb-8">
+                        <h1 className="display-title text-4xl font-semibold text-foreground tracking-tight">
+                            로그인
+                        </h1>
+                        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                            계정에 로그인하여 판매 운영 화면으로 진입하세요.
+                        </p>
+                    </div>
 
-                {/* 폼 카드 */}
-                <div className="bg-card border border-border rounded-xl p-6 space-y-5">
-
-                    {/* 서버 에러 알림 */}
                     {state.errors?._form && (
                         <Alert variant="destructive">
                             <AlertDescription>{state.errors._form[0]}</AlertDescription>
                         </Alert>
                     )}
 
-                    <form action={formAction} className="space-y-4">
-
-                        {/* 이메일 */}
+                    <form action={formAction} className="mt-5 space-y-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="email">이메일</Label>
                             <Input
@@ -61,7 +58,6 @@ export default function LoginPage() {
                             )}
                         </div>
 
-                        {/* 비밀번호 */}
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="password">비밀번호</Label>
@@ -87,25 +83,22 @@ export default function LoginPage() {
                             )}
                         </div>
 
-                        {/* 제출 버튼 */}
                         <Button type="submit" className="w-full" disabled={isPending}>
                             {isPending ? "로그인 중..." : "로그인"}
                         </Button>
                     </form>
-                </div>
 
-                {/* 회원가입 링크 */}
-                <p className="mt-5 text-center text-sm text-muted-foreground">
-                    계정이 없으신가요?{" "}
-                    <Link
-                        to="/auth/register"
-                        className="text-primary font-medium hover:underline underline-offset-4 transition-colors"
-                    >
-                        회원가입
-                    </Link>
-                </p>
-
-            </div>
+                    <p className="mt-6 text-center text-sm text-muted-foreground">
+                        계정이 없으신가요?{" "}
+                        <Link
+                            to="/auth/register"
+                            className="text-primary font-medium hover:underline underline-offset-4 transition-colors"
+                        >
+                            회원가입
+                        </Link>
+                    </p>
+                </CardContent>
+            </Card>
         </div>
     )
 }
