@@ -21,7 +21,7 @@ export async function getSellerProducts() {
   }
 
   try {
-    const response = await apiInstance.get("/products")
+    const response = await apiInstance.get("/seller/products")
     return unwrapApiResponseBody(response, "상품 목록을 불러오지 못했습니다.")
   } catch (error) {
     throw normalizeApiError(error, "상품 목록 조회에 실패했습니다.")

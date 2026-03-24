@@ -42,18 +42,18 @@ export default function LoginPage() {
 
                     <form action={formAction} className="mt-5 space-y-4">
                         <div className="space-y-1.5">
-                            <Label htmlFor="email">이메일</Label>
+                            <Label htmlFor="username">아이디</Label>
                             <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="name@example.com"
-                                autoComplete="email"
-                                aria-describedby={state.errors?.email ? "email-error" : undefined}
+                                id="username"
+                                name="username"
+                                type="text"
+                                placeholder="아이디를 입력하세요"
+                                autoComplete="username"
+                                aria-describedby={state.errors?.username ? "username-error" : undefined}
                             />
-                            {state.errors?.email && (
-                                <p id="email-error" className="text-xs text-destructive font-medium">
-                                    {state.errors.email[0]}
+                            {state.errors?.username && (
+                                <p id="username-error" className="text-xs text-destructive font-medium">
+                                    {state.errors.username[0]}
                                 </p>
                             )}
                         </div>
