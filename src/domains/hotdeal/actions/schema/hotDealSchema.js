@@ -1,10 +1,7 @@
 import { z } from "zod"
 
 export const hotDealSchema = z.object({
-  itemId: z.coerce
-    .number({ invalid_type_error: "아이템을 선택해주세요." })
-    .int()
-    .min(1, "아이템을 선택해주세요."),
+  itemId: z.string().min(1, "아이템을 선택해주세요."),
   discountRate: z.coerce
     .number({ invalid_type_error: "할인율을 입력해주세요." })
     .int()
