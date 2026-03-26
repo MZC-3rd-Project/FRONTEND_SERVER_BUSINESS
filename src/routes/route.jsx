@@ -14,6 +14,7 @@ import RegisterPage from "@/domains/auth/page/RegisterPage.jsx";
 import { useMyStoreQuery } from "@/domains/items/hook/useItemsQuery.js";
 import ReviewsPage from "@/domains/reviews/page/Reviews.jsx";
 import ChatInboxPage from "@/domains/chat/page/ChatInbox.jsx";
+import OrdersPage from "@/domains/orders/page/Orders.jsx";
 
 function BusinessEntryRedirect() {
   const { data: myStore, isLoading } = useMyStoreQuery();
@@ -54,6 +55,7 @@ function BusinessRoutes() {
         <Route path="/business/funding/:campaignId" element={<FundingDetailPage />} />
         <Route path="/business/hotdeal" element={<HotDealPage />} />
         <Route path="/business/hotdeal/:hotDealId" element={<HotDealDetailPage />} />
+        <Route path="/business/orders" element={<OrdersPage />} />
         <Route path="/business/reviews" element={<ReviewsPage />} />
         <Route path="/business/messages" element={<ChatInboxPage />} />
         <Route path="/business/analytics" element={<Navigate to="/business/dashboard" replace />} />
