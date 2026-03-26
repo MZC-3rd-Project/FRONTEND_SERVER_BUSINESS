@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Store,
   Package,
+  ShoppingBag,
   Zap,
   Tag,
   Star,
@@ -46,6 +47,14 @@ const NAV_ITEMS = [
     kicker: "Catalog Management",
     description: "굿즈와 공연 상품을 같은 인터페이스 안에서 추가하고 정리합니다.",
     focus: "상품 포트폴리오 운영",
+  },
+  {
+    icon: ShoppingBag,
+    label: "주문 관리",
+    path: "/business/orders",
+    kicker: "Order Management",
+    description: "내 가게에 들어온 주문을 상태별로 확인하고 상세 정보를 조회합니다.",
+    focus: "주문 현황 확인",
   },
   {
     icon: Zap,
