@@ -88,6 +88,17 @@ export function mapMyStorePayload(raw) {
 
   const storeName = toText(raw?.storeName ?? raw?.store_name ?? raw?.name, "내 스토어")
 
+  // 백엔드 StoreListResponse는 flat 필드(address, contactValue)를 반환하므로 배열로 변환
+  let addresses = Array.isArray(raw?.addresses) ? raw.addresses : []
+  if (addresses.length === 0 && raw?.address) {
+    addresses = [{ address: raw.address, addressType: raw.addressType ?? "MAIN", isDefault: true }]
+  }
+
+  let contacts = Array.isArray(raw?.contacts) ? raw.contacts : []
+  if (contacts.length === 0 && raw?.contactValue) {
+    contacts = [{ contactValue: raw.contactValue, contactType: raw.contactType ?? "PHONE", isPrimary: true }]
+  }
+
   return {
     ...raw,
     id: toId(raw?.storeId ?? raw?.id),
@@ -97,8 +108,8 @@ export function mapMyStorePayload(raw) {
     name: storeName,
     status: toText(raw?.status, "INACTIVE"),
     description: toText(raw?.description),
-    addresses: Array.isArray(raw?.addresses) ? raw.addresses : [],
-    contacts: Array.isArray(raw?.contacts) ? raw.contacts : [],
+    addresses,
+    contacts,
   }
 }
 

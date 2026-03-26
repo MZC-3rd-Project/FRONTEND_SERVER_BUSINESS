@@ -1,30 +1,45 @@
 import { useActionState, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
-  BarChart3,
   Check,
   ChevronRight,
   FileText,
+  ImagePlus,
   MapPin,
+  Pencil,
   Phone,
   ShieldCheck,
   Store,
+  X,
 } from "lucide-react";
 
 import { createStoreAction } from "@/domains/store/actions/createStoreAction";
 import { useMyStoreQuery } from "@/domains/items/hook/useItemsQuery.js";
+import { useStoreDetailQuery, useUpdateStoreMutation } from "@/domains/store/hook/useStoreQuery.js";
+import { getMediaUrl, uploadImageToMedia } from "@/common/api/mediaApi.js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import Step1 from "@/components/store/Step1.jsx";
 import Step2 from "@/components/store/Step2.jsx";
 import Step3 from "@/components/store/Step3.jsx";
 import Step4 from "@/components/store/Step4.jsx";
 import ReviewSummary from "@/components/store/ReviewSummary.jsx";
+import StoreManageActions from "@/components/store/StoreManageActions.jsx";
 import PageIntro from "@/components/layout/PageIntro.jsx";
 
 const STEPS = ["기본 정보", "주소", "연락처", "소개 & 이미지"];
@@ -73,9 +88,47 @@ function getContactText(contact) {
   return contact?.contact_value ?? contact?.contactValue ?? "연락처 정보 없음";
 }
 
+const GALLERY_MAX = 4;
+
+function ImageThumbnail({ mediaId, previewUrl, className }) {
+  const { data: fetchedUrl, isPending } = useQuery({
+    queryKey: ["media", "url", String(mediaId)],
+    queryFn: () => getMediaUrl(String(mediaId)),
+    enabled: !!mediaId && !previewUrl,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+  const url = previewUrl || fetchedUrl;
+
+  if (!url) {
+    return (
+      <div
+        className={cn(
+          "rounded-xl flex items-center justify-center bg-muted",
+          isPending && "animate-pulse",
+          className
+        )}
+      >
+        {!isPending && <ImagePlus size={16} className="text-muted-foreground/40" />}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      className={cn("object-cover rounded-xl", className)}
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+        e.currentTarget.nextSibling?.style && (e.currentTarget.nextSibling.style.display = "flex");
+      }}
+    />
+  );
+}
+
 function StepIndicator({ current }) {
   return (
-    <div className="grid gap-3 lg:grid-cols-5">
+    <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
       {FLOW_STEPS.map((label, i) => {
         const done = i < current;
         const active = i === current;
@@ -84,7 +137,7 @@ function StepIndicator({ current }) {
           <div
             key={label}
             className={cn(
-              "metric-chip flex items-center gap-3 rounded-[1.5rem] px-4 py-4 transition-all",
+              "metric-chip flex items-center gap-2 rounded-[1.5rem] px-3 py-3 transition-all",
               active &&
                 "border-primary/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(219,234,254,0.84))] shadow-[0_18px_40px_rgba(59,130,246,0.16)] dark:border-sky-400/20 dark:bg-[linear-gradient(135deg,rgba(8,15,31,0.96),rgba(15,23,42,0.84))]",
               done &&
@@ -93,7 +146,7 @@ function StepIndicator({ current }) {
           >
             <div
               className={cn(
-                "grid h-11 w-11 shrink-0 place-items-center rounded-[1.1rem] border text-sm font-semibold transition-all",
+                "grid h-9 w-9 shrink-0 place-items-center rounded-[1rem] border text-sm font-semibold transition-all",
                 done
                   ? "border-white/14 bg-white/12 text-white"
                   : active
@@ -101,12 +154,12 @@ function StepIndicator({ current }) {
                     : "border-white/80 bg-white/70 text-muted-foreground dark:border-slate-700 dark:bg-slate-950/40"
               )}
             >
-              {done ? <Check size={16} /> : i + 1}
+              {done ? <Check size={14} /> : i + 1}
             </div>
             <div className="min-w-0">
               <p
                 className={cn(
-                  "text-[0.68rem] font-semibold uppercase tracking-[0.22em]",
+                  "text-[0.65rem] font-semibold uppercase tracking-[0.15em]",
                   done
                     ? "text-white/70"
                     : active
@@ -116,7 +169,14 @@ function StepIndicator({ current }) {
               >
                 Step {i + 1}
               </p>
-              <p className="mt-1 truncate text-sm font-semibold">{label}</p>
+              <p
+                className={cn(
+                  "mt-0.5 truncate text-xs font-semibold",
+                  done ? "text-white" : "text-foreground"
+                )}
+              >
+                {label}
+              </p>
             </div>
           </div>
         );
@@ -125,12 +185,190 @@ function StepIndicator({ current }) {
   );
 }
 
+const ADDRESS_TYPE_LABEL = {
+  MAIN: "본점",
+  PICKUP: "픽업",
+  RETURN: "반품",
+  WAREHOUSE: "창고",
+};
+
+const CONTACT_TYPE_LABEL = {
+  PHONE: "전화",
+  EMAIL: "이메일",
+};
+
+function SectionEditButton({ onClick }) {
+  return (
+    <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" onClick={onClick}>
+      <Pencil size={12} /> 수정
+    </Button>
+  );
+}
+
+function EditActions({ onSave, onCancel, isPending }) {
+  return (
+    <div className="flex gap-2">
+      <Button size="sm" onClick={onSave} disabled={isPending}>
+        {isPending ? "저장 중..." : "저장"}
+      </Button>
+      <Button size="sm" variant="outline" onClick={onCancel} disabled={isPending}>
+        <X size={14} />
+      </Button>
+    </div>
+  );
+}
+
 function StoreOverview({ store }) {
+  const navigate = useNavigate();
   const storeName = getStoreName(store);
   const status = getStoreStatus(store);
   const addresses = getAddresses(store);
   const contacts = getContacts(store);
-  const description = store?.description ?? "가게 소개가 아직 등록되지 않았습니다.";
+  const description = store?.description || "";
+  const storeId = store?.id ?? store?.storeId;
+
+  const isActive = status === "ACTIVE";
+
+  const updateMutation = useUpdateStoreMutation();
+  const { data: storeDetail } = useStoreDetailQuery(storeId);
+
+  // 편집 섹션 상태
+  const [editSection, setEditSection] = useState(null); // "basic" | "address" | "contact" | "description" | "images"
+  const [editError, setEditError] = useState(null);
+
+  // 이미지 편집 상태
+  // 각 항목: { mediaId: string, imageType: "THUMBNAIL"|"GALLERY", sortOrder: number, previewUrl: string|null }
+  const [editImages, setEditImages] = useState([]);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // 기본 정보 편집 상태
+  const [editStoreName, setEditStoreName] = useState(storeName);
+  const [editStatus, setEditStatus] = useState(status);
+
+  // 주소 편집 상태
+  const addr = addresses[0];
+  const [editAddressType, setEditAddressType] = useState(
+    addr?.addressType ?? addr?.address_type ?? "MAIN"
+  );
+  const [editPostcode, setEditPostcode] = useState("");
+  const [editRoadAddress, setEditRoadAddress] = useState(addr?.address ?? "");
+  const [editDetailAddress, setEditDetailAddress] = useState("");
+
+  // 연락처 편집 상태
+  const contact = contacts[0];
+  const [editContactValue, setEditContactValue] = useState(
+    contact?.contactValue ?? contact?.contact_value ?? ""
+  );
+  const [editContactType, setEditContactType] = useState(
+    contact?.contactType ?? contact?.contact_type ?? "PHONE"
+  );
+
+  // 소개 편집 상태
+  const [editDescription, setEditDescription] = useState(description);
+
+  function openEdit(section) {
+    setEditError(null);
+    // 최신값으로 초기화
+    if (section === "basic") {
+      setEditStoreName(storeName);
+      setEditStatus(status);
+    } else if (section === "address") {
+      const a = addresses[0];
+      setEditAddressType(a?.addressType ?? a?.address_type ?? "MAIN");
+      setEditPostcode("");
+      setEditRoadAddress(a?.address ?? "");
+      setEditDetailAddress("");
+    } else if (section === "contact") {
+      const c = contacts[0];
+      setEditContactValue(c?.contactValue ?? c?.contact_value ?? "");
+      setEditContactType(c?.contactType ?? c?.contact_type ?? "PHONE");
+    } else if (section === "description") {
+      setEditDescription(description);
+    } else if (section === "images") {
+      const thumb = storeDetail?.image?.thumbnail;
+      const gallery = Array.isArray(storeDetail?.image?.gallery) ? storeDetail.image.gallery : [];
+      const initial = [];
+      if (thumb?.mediaId) {
+        initial.push({
+          mediaId: String(thumb.mediaId),
+          imageType: "THUMBNAIL",
+          sortOrder: 0,
+          previewUrl: thumb.mediaUrl ?? null,
+        });
+      }
+      gallery.forEach((img, i) => {
+        initial.push({
+          mediaId: String(img.mediaId),
+          imageType: "GALLERY",
+          sortOrder: img.sortOrder ?? i + 1,
+          previewUrl: img.mediaUrl ?? null,
+        });
+      });
+      setEditImages(initial);
+    }
+    setEditSection(section);
+  }
+
+  function closeEdit() {
+    setEditSection(null);
+    setEditError(null);
+  }
+
+  function openKakaoPostcode() {
+    new window.daum.Postcode({
+      oncomplete: (result) => {
+        setEditPostcode(result.zonecode);
+        setEditRoadAddress(result.roadAddress || result.jibunAddress);
+        setEditDetailAddress("");
+      },
+    }).open();
+  }
+
+  async function handleImageUpload(file, imageType) {
+    setIsUploadingImage(true);
+    setEditError(null);
+    try {
+      const confirmed = await uploadImageToMedia(file, {
+        ownerType: "STORE",
+        ownerId: Number(storeId),
+        usageType: imageType,
+        sortOrder: editImages.filter((i) => i.imageType === imageType).length,
+      });
+      const newImg = {
+        mediaId: String(confirmed.mediaId),
+        imageType,
+        sortOrder: editImages.filter((i) => i.imageType === imageType).length,
+        previewUrl: confirmed.mediaUrl ?? null,
+      };
+      if (imageType === "THUMBNAIL") {
+        // 썸네일은 1장만 — 기존 썸네일 교체
+        setEditImages((prev) => [
+          ...prev.filter((i) => i.imageType !== "THUMBNAIL"),
+          newImg,
+        ]);
+      } else {
+        setEditImages((prev) => [...prev, newImg]);
+      }
+    } catch (err) {
+      setEditError(err?.message ?? "이미지 업로드에 실패했습니다.");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }
+
+  function removeEditImage(mediaId) {
+    setEditImages((prev) => prev.filter((i) => i.mediaId !== mediaId));
+  }
+
+  function handleSave(payload) {
+    updateMutation.mutate(
+      { storeId, data: payload },
+      {
+        onSuccess: closeEdit,
+        onError: (err) => setEditError(err?.message ?? "수정에 실패했습니다."),
+      }
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -162,10 +400,7 @@ function StoreOverview({ store }) {
           <CardContent className="p-5">
             <p className="section-kicker">Store</p>
             <p className="mt-3 text-lg font-semibold text-foreground">{storeName}</p>
-            <Badge
-              variant={status === "ACTIVE" ? "default" : "outline"}
-              className="mt-3 w-fit"
-            >
+            <Badge variant={isActive ? "default" : "outline"} className="mt-3 w-fit">
               {STATUS_LABEL[status] ?? status}
             </Badge>
           </CardContent>
@@ -208,116 +443,523 @@ function StoreOverview({ store }) {
         </Card>
       </div>
 
+      {/* 가게 운영 관리 */}
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="text-base font-semibold text-foreground">가게 운영 관리</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            가게 공개 여부를 변경하거나 가게를 영구 삭제할 수 있습니다.
+          </p>
+          <div className="mt-5">
+            <StoreManageActions
+              storeId={storeId}
+              storeName={storeName}
+              status={status}
+              onDeleted={() => navigate("/business/store", { replace: true })}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {editError && (
+        <Alert variant="destructive">
+          <AlertDescription>{editError}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        {/* 기본 정보 + 소개 */}
         <Card>
           <CardContent className="p-6">
-            <div className="flex items-center gap-2">
-              <Store size={18} className="text-primary" />
-              <h2 className="display-title text-2xl font-semibold text-foreground">
-                기본 정보
-              </h2>
-            </div>
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="metric-chip rounded-[1.4rem] px-4 py-4">
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  Store name
-                </p>
-                <p className="mt-2 text-sm font-semibold text-foreground">{storeName}</p>
-              </div>
-
-              <div className="metric-chip rounded-[1.4rem] px-4 py-4">
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  Visibility
-                </p>
-                <p className="mt-2 text-sm font-semibold text-foreground">
-                  {STATUS_LABEL[status] ?? status}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-[1.5rem] border border-border/80 bg-white/60 p-4 dark:bg-slate-950/24">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <FileText size={16} className="text-primary" />
-                <p className="text-sm font-semibold text-foreground">가게 소개</p>
+                <Store size={18} className="text-primary" />
+                <h2 className="display-title text-2xl font-semibold text-foreground">기본 정보</h2>
               </div>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {description}
-              </p>
+              {editSection !== "basic" && <SectionEditButton onClick={() => openEdit("basic")} />}
+            </div>
+
+            {editSection === "basic" ? (
+              <div className="mt-5 space-y-4">
+                <div className="space-y-1.5">
+                  <Label>가게명</Label>
+                  <Input
+                    value={editStoreName}
+                    onChange={(e) => setEditStoreName(e.target.value)}
+                    placeholder="가게명을 입력하세요"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>운영 상태</Label>
+                  <Select value={editStatus} onValueChange={setEditStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">운영 중</SelectItem>
+                      <SelectItem value="INACTIVE">비공개</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <EditActions
+                  onSave={() =>
+                    handleSave({
+                      storeName: editStoreName,
+                      status: editStatus,
+                      address: addr?.address ?? addresses[0]?.address ?? "",
+                      addressType: addr?.addressType ?? addr?.address_type ?? "MAIN",
+                      contactValue: contact?.contactValue ?? contact?.contact_value ?? "",
+                      contactType: contact?.contactType ?? contact?.contact_type ?? "PHONE",
+                      description: description,
+                    })
+                  }
+                  onCancel={closeEdit}
+                  isPending={updateMutation.isPending}
+                />
+              </div>
+            ) : (
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="metric-chip rounded-[1.4rem] px-4 py-4">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Store name
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">{storeName}</p>
+                </div>
+                <div className="metric-chip rounded-[1.4rem] px-4 py-4">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Visibility
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    {STATUS_LABEL[status] ?? status}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 소개 섹션 */}
+            <div className="mt-5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-primary" />
+                  <p className="text-sm font-semibold text-foreground">가게 소개</p>
+                </div>
+                {editSection !== "description" && (
+                  <SectionEditButton onClick={() => openEdit("description")} />
+                )}
+              </div>
+
+              {editSection === "description" ? (
+                <div className="mt-3 space-y-3">
+                  <Textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    placeholder="가게 소개를 입력하세요"
+                    rows={4}
+                  />
+                  <EditActions
+                    onSave={() =>
+                      handleSave({
+                        storeName: storeName,
+                        status: status,
+                        address: addr?.address ?? addresses[0]?.address ?? "",
+                        addressType: addr?.addressType ?? addr?.address_type ?? "MAIN",
+                        contactValue: contact?.contactValue ?? contact?.contact_value ?? "",
+                        contactType: contact?.contactType ?? contact?.contact_type ?? "PHONE",
+                        description: editDescription,
+                      })
+                    }
+                    onCancel={closeEdit}
+                    isPending={updateMutation.isPending}
+                  />
+                </div>
+              ) : (
+                <div className="mt-3 rounded-[1.5rem] border border-border/80 bg-white/60 p-4 dark:bg-slate-950/24">
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {description || "가게 소개가 아직 등록되지 않았습니다."}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 이미지 섹션 */}
+            <div className="mt-5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ImagePlus size={16} className="text-primary" />
+                  <p className="text-sm font-semibold text-foreground">가게 이미지</p>
+                </div>
+                {editSection !== "images" && (
+                  <SectionEditButton onClick={() => openEdit("images")} />
+                )}
+              </div>
+
+              {editSection === "images" ? (
+                <div className="mt-3 space-y-5">
+                  {/* 썸네일 */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      썸네일 <span className="font-normal">(1장)</span>
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      {editImages
+                        .filter((i) => i.imageType === "THUMBNAIL")
+                        .map((img) => (
+                          <div key={img.mediaId} className="relative group w-24 h-24">
+                            <ImageThumbnail
+                              mediaId={img.mediaId}
+                              previewUrl={img.previewUrl}
+                              className="w-24 h-24"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeEditImage(img.mediaId)}
+                              className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition"
+                            >
+                              <X size={12} className="text-white" />
+                            </button>
+                          </div>
+                        ))}
+                      {editImages.filter((i) => i.imageType === "THUMBNAIL").length === 0 && (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleImageUpload(f, "THUMBNAIL");
+                              e.target.value = "";
+                            }}
+                          />
+                          <div className="w-24 h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-primary transition-colors bg-card">
+                            <ImagePlus size={18} className="text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">업로드</span>
+                          </div>
+                        </label>
+                      )}
+                      {editImages.filter((i) => i.imageType === "THUMBNAIL").length > 0 && (
+                        <label className="cursor-pointer self-end">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleImageUpload(f, "THUMBNAIL");
+                              e.target.value = "";
+                            }}
+                          />
+                          <Button type="button" variant="outline" size="sm" asChild>
+                            <span>변경</span>
+                          </Button>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 갤러리 */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      갤러리{" "}
+                      <span className="font-normal">
+                        ({editImages.filter((i) => i.imageType === "GALLERY").length}/{GALLERY_MAX}장)
+                      </span>
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      {editImages
+                        .filter((i) => i.imageType === "GALLERY")
+                        .map((img) => (
+                          <div key={img.mediaId} className="relative group w-20 h-20">
+                            <ImageThumbnail
+                              mediaId={img.mediaId}
+                              previewUrl={img.previewUrl}
+                              className="w-20 h-20"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeEditImage(img.mediaId)}
+                              className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition"
+                            >
+                              <X size={12} className="text-white" />
+                            </button>
+                          </div>
+                        ))}
+                      {editImages.filter((i) => i.imageType === "GALLERY").length < GALLERY_MAX && (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleImageUpload(f, "GALLERY");
+                              e.target.value = "";
+                            }}
+                          />
+                          <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-primary transition-colors bg-card">
+                            <ImagePlus size={16} className="text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">추가</span>
+                          </div>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  {isUploadingImage && (
+                    <p className="text-xs text-muted-foreground animate-pulse">업로드 중...</p>
+                  )}
+
+                  <EditActions
+                    onSave={() =>
+                      handleSave({
+                        storeName: storeName,
+                        status: status,
+                        address: addr?.address ?? addresses[0]?.address ?? "",
+                        addressType: addr?.addressType ?? addr?.address_type ?? "MAIN",
+                        contactValue: contact?.contactValue ?? contact?.contact_value ?? "",
+                        contactType: contact?.contactType ?? contact?.contact_type ?? "PHONE",
+                        description: description,
+                        images: editImages.map((img, idx) => ({
+                          imageType: img.imageType,
+                          mediaId: img.mediaId,
+                          mediaUrl: img.previewUrl ?? null,
+                          sortOrder: idx,
+                        })),
+                      })
+                    }
+                    onCancel={closeEdit}
+                    isPending={updateMutation.isPending || isUploadingImage}
+                  />
+                </div>
+              ) : (
+                <div className="mt-3">
+                  {(() => {
+                    const thumb = storeDetail?.image?.thumbnail;
+                    const gallery = storeDetail?.image?.gallery ?? [];
+                    const hasImages = !!(thumb?.mediaId || gallery.length > 0);
+
+                    if (!storeDetail) {
+                      return (
+                        <div className="flex gap-3">
+                          {[0, 1].map((i) => (
+                            <div key={i} className="w-20 h-20 animate-pulse rounded-xl bg-muted" />
+                          ))}
+                        </div>
+                      );
+                    }
+
+                    if (!hasImages) {
+                      return <p className="text-sm text-muted-foreground">등록된 이미지가 없습니다.</p>;
+                    }
+
+                    return (
+                      <div className="flex flex-wrap gap-3">
+                        {thumb?.mediaId && (
+                          <div className="flex flex-col items-center gap-1">
+                            <ImageThumbnail
+                              mediaId={thumb.mediaId}
+                              previewUrl={thumb.mediaUrl}
+                              className="w-20 h-20"
+                            />
+                            <span className="text-[0.65rem] text-muted-foreground">썸네일</span>
+                          </div>
+                        )}
+                        {gallery.map((img, i) => (
+                          <div key={img.mediaId ?? i} className="flex flex-col items-center gap-1">
+                            <ImageThumbnail
+                              mediaId={img.mediaId}
+                              previewUrl={img.mediaUrl}
+                              className="w-20 h-20"
+                            />
+                            <span className="text-[0.65rem] text-muted-foreground">갤러리 {i + 1}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
+        {/* 주소 + 연락처 */}
         <div className="grid gap-6">
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <MapPin size={18} className="text-primary" />
-                <h2 className="display-title text-2xl font-semibold text-foreground">
-                  주소 정보
-                </h2>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <MapPin size={18} className="text-primary" />
+                  <h2 className="display-title text-2xl font-semibold text-foreground">주소 정보</h2>
+                </div>
+                {editSection !== "address" && <SectionEditButton onClick={() => openEdit("address")} />}
               </div>
 
-              <div className="mt-5 space-y-3">
-                {addresses.length > 0 ? (
-                  addresses.map((address, index) => (
-                    <div
-                      key={`${address?.id ?? "address"}-${index}`}
-                      className="metric-chip rounded-[1.35rem] px-4 py-4"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-foreground">
-                          {address?.address_type ?? address?.addressType ?? `주소 ${index + 1}`}
-                        </p>
-                        {address?.is_default || address?.isDefault ? (
-                          <Badge variant="outline">기본 주소</Badge>
-                        ) : null}
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {getAddressText(address)}
-                      </p>
+              {editSection === "address" ? (
+                <div className="mt-5 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label>주소 유형</Label>
+                    <Select value={editAddressType} onValueChange={setEditAddressType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(ADDRESS_TYPE_LABEL).map(([val, label]) => (
+                          <SelectItem key={val} value={val}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>주소 <span className="text-destructive">*</span></Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={editPostcode}
+                        readOnly
+                        placeholder="우편번호"
+                        className="w-28 bg-muted cursor-default"
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={openKakaoPostcode}>
+                        <MapPin size={14} /> 주소 검색
+                      </Button>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">등록된 주소가 없습니다.</p>
-                )}
-              </div>
+                    <Input
+                      value={editRoadAddress}
+                      readOnly
+                      placeholder="도로명 주소"
+                      className="bg-muted cursor-default"
+                    />
+                    <Input
+                      value={editDetailAddress}
+                      onChange={(e) => setEditDetailAddress(e.target.value)}
+                      placeholder="상세주소를 입력하세요 (동/호수 등)"
+                    />
+                  </div>
+                  <EditActions
+                    onSave={() => {
+                      const fullAddress = [editRoadAddress, editDetailAddress.trim()]
+                        .filter(Boolean)
+                        .join(" ");
+                      handleSave({
+                        storeName: storeName,
+                        status: status,
+                        address: fullAddress,
+                        addressType: editAddressType,
+                        contactValue: contact?.contactValue ?? contact?.contact_value ?? "",
+                        contactType: contact?.contactType ?? contact?.contact_type ?? "PHONE",
+                        description: description,
+                      });
+                    }}
+                    onCancel={closeEdit}
+                    isPending={updateMutation.isPending}
+                  />
+                </div>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  {addresses.length > 0 ? (
+                    addresses.map((address, index) => (
+                      <div
+                        key={`${address?.id ?? "address"}-${index}`}
+                        className="metric-chip rounded-[1.35rem] px-4 py-4"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-foreground">
+                            {ADDRESS_TYPE_LABEL[address?.addressType ?? address?.address_type] ??
+                              address?.addressType ?? address?.address_type ?? `주소 ${index + 1}`}
+                          </p>
+                          {address?.is_default || address?.isDefault ? (
+                            <Badge variant="outline">기본 주소</Badge>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          {getAddressText(address)}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">등록된 주소가 없습니다.</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <Phone size={18} className="text-primary" />
-                <h2 className="display-title text-2xl font-semibold text-foreground">
-                  연락처 정보
-                </h2>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Phone size={18} className="text-primary" />
+                  <h2 className="display-title text-2xl font-semibold text-foreground">연락처 정보</h2>
+                </div>
+                {editSection !== "contact" && <SectionEditButton onClick={() => openEdit("contact")} />}
               </div>
 
-              <div className="mt-5 space-y-3">
-                {contacts.length > 0 ? (
-                  contacts.map((contact, index) => (
-                    <div
-                      key={`${contact?.id ?? "contact"}-${index}`}
-                      className="metric-chip rounded-[1.35rem] px-4 py-4"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-foreground">
-                          {contact?.contact_type ?? contact?.contactType ?? `연락처 ${index + 1}`}
+              {editSection === "contact" ? (
+                <div className="mt-5 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label>연락처 유형</Label>
+                    <Select value={editContactType} onValueChange={setEditContactType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(CONTACT_TYPE_LABEL).map(([val, label]) => (
+                          <SelectItem key={val} value={val}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>연락처</Label>
+                    <Input
+                      value={editContactValue}
+                      onChange={(e) => setEditContactValue(e.target.value)}
+                      placeholder={editContactType === "EMAIL" ? "이메일을 입력하세요" : "전화번호를 입력하세요"}
+                    />
+                  </div>
+                  <EditActions
+                    onSave={() =>
+                      handleSave({
+                        storeName: storeName,
+                        status: status,
+                        address: addr?.address ?? addresses[0]?.address ?? "",
+                        addressType: addr?.addressType ?? addr?.address_type ?? "MAIN",
+                        contactValue: editContactValue,
+                        contactType: editContactType,
+                        description: description,
+                      })
+                    }
+                    onCancel={closeEdit}
+                    isPending={updateMutation.isPending}
+                  />
+                </div>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  {contacts.length > 0 ? (
+                    contacts.map((contact, index) => (
+                      <div
+                        key={`${contact?.id ?? "contact"}-${index}`}
+                        className="metric-chip rounded-[1.35rem] px-4 py-4"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-foreground">
+                            {CONTACT_TYPE_LABEL[contact?.contactType ?? contact?.contact_type] ??
+                              contact?.contactType ?? contact?.contact_type ?? `연락처 ${index + 1}`}
+                          </p>
+                          {contact?.is_primary || contact?.isPrimary ? (
+                            <Badge variant="outline">대표 연락처</Badge>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                          {getContactText(contact)}
                         </p>
-                        {contact?.is_primary || contact?.isPrimary ? (
-                          <Badge variant="outline">대표 연락처</Badge>
-                        ) : null}
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {getContactText(contact)}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">등록된 연락처가 없습니다.</p>
-                )}
-              </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">등록된 연락처가 없습니다.</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
