@@ -1,5 +1,4 @@
 import { useState } from "react"
-import { ShoppingBag } from "lucide-react"
 import PageIntro from "@/components/layout/PageIntro.jsx"
 import OrderList from "@/components/orders/organisms/OrderList.jsx"
 import OrderDetailPanel from "@/components/orders/organisms/OrderDetailPanel.jsx"

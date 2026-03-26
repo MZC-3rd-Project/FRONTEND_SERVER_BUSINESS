@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { ORDER_STATUS_META } from "@/components/orders/atoms/OrderStatusBadge.jsx"
+import { ORDER_STATUS_META } from "@/components/orders/atoms/orderStatusMeta.js"
 
 const FILTERS = [
   { value: null,               label: "전체" },
