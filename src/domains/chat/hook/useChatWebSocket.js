@@ -5,11 +5,14 @@ function buildWsUrl() {
   return `${protocol}//${window.location.host}/ws/chat`
 }
 
+// WS close code 1008 = Policy Violation (인증 실패)
+const WS_CLOSE_POLICY_VIOLATION = 1008
+
 /**
  * 채팅 WebSocket 연결 훅
  *
  * 반환값:
- *  - status: "connecting" | "connected" | "disconnected"
+ *  - status: "connecting" | "connected" | "disconnected" | "auth_failed"
  *  - subscribeRoom(roomId, lastReceivedMessageId?)
  *  - sendMessage({ roomId, clientMessageId, content, messageType?, metadata? })
  */
@@ -31,9 +34,9 @@ export function useChatWebSocket({ onFrame }) {
     (roomId, lastReceivedMessageId) => {
       send({
         type: "SUBSCRIBE_ROOM",
-        roomId: Number(roomId),
+        roomId: String(roomId),
         ...(lastReceivedMessageId != null && {
-          lastReceivedMessageId: Number(lastReceivedMessageId),
+          lastReceivedMessageId: String(lastReceivedMessageId),
         }),
       })
     },
@@ -44,7 +47,7 @@ export function useChatWebSocket({ onFrame }) {
     ({ roomId, clientMessageId, content, messageType = "CHAT", metadata }) => {
       send({
         type: "SEND_MESSAGE",
-        roomId: Number(roomId),
+        roomId: String(roomId),
         clientMessageId,
         messageType,
         content,
@@ -95,8 +98,15 @@ export function useChatWebSocket({ onFrame }) {
         // handled in onclose
       }
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         clearInterval(heartbeatRef.current)
+
+        // 1008 = Policy Violation: 인증 실패 — 재연결해도 계속 거부됨
+        if (event.code === WS_CLOSE_POLICY_VIOLATION) {
+          setStatus("auth_failed")
+          return
+        }
+
         setStatus("disconnected")
         if (!destroyed) {
           reconnectTimeout = setTimeout(connect, 3_000)
