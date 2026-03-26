@@ -1,9 +1,9 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link, useParams } from "react-router"
-import { Ban, Save } from "lucide-react"
+import { Ban, RotateCcw, Save } from "lucide-react"
 
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { fundingKeys, useCampaignQuery } from "@/domains/funding/hook/useFundingQuery.js"
-import { cancelCampaign, updateCampaign } from "@/domains/funding/api/fundingApi.js"
+import { cancelCampaign, reactivateCampaign, updateCampaign } from "@/domains/funding/api/fundingApi.js"
 import PageIntro from "@/components/layout/PageIntro.jsx"
 
 function buildCampaignForm(campaign) {
@@ -28,20 +28,49 @@ function buildCampaignForm(campaign) {
   }
 }
 
+const RE_REGISTERABLE_STATUSES = ["CANCELLED", "COMPLETED", "SUCCEEDED", "FAILED"]
+
 function FundingDetailEditor({ campaign, campaignId }) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState(() => buildCampaignForm(campaign))
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  useEffect(() => {
+    if (!saveSuccess) return
+    const timer = setTimeout(() => setSaveSuccess(false), 3000)
+    return () => clearTimeout(timer)
+  }, [saveSuccess])
 
   const updateMutation = useMutation({
     mutationFn: (payload) => updateCampaign(campaignId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fundingKeys.lists() })
       queryClient.invalidateQueries({ queryKey: fundingKeys.detail(campaignId) })
+      setSaveSuccess(true)
     },
   })
 
   const cancelMutation = useMutation({
     mutationFn: (reason) => cancelCampaign(campaignId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fundingKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: fundingKeys.detail(campaignId) })
+    },
+  })
+
+  const reRegisterMutation = useMutation({
+    mutationFn: () =>
+      reactivateCampaign(campaignId, {
+        title: form.title || undefined,
+        summary: form.summary || undefined,
+        makerName: form.makerName || undefined,
+        category: form.category || undefined,
+        goalAmount: Number(form.goalAmount || 0),
+        goalQuantity: form.goalQuantity ? Number(form.goalQuantity) : undefined,
+        minAmount: form.minAmount ? Number(form.minAmount) : undefined,
+        startAt: form.startAt ? `${form.startAt}:00` : undefined,
+        endAt: form.endAt ? `${form.endAt}:00` : undefined,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fundingKeys.lists() })
       queryClient.invalidateQueries({ queryKey: fundingKeys.detail(campaignId) })
@@ -71,12 +100,23 @@ function FundingDetailEditor({ campaign, campaignId }) {
     await cancelMutation.mutateAsync("seller-console")
   }
 
+  const handleReRegister = async () => {
+    if (!window.confirm("현재 설정으로 새 펀딩 캠페인을 재등록하시겠습니까?")) return
+    await reRegisterMutation.mutateAsync()
+  }
+
   return (
     <>
-      {(updateMutation.error || cancelMutation.error) ? (
+      {saveSuccess && (
+        <Alert>
+          <AlertTitle>저장 완료</AlertTitle>
+          <AlertDescription>변경 사항이 성공적으로 저장되었습니다.</AlertDescription>
+        </Alert>
+      )}
+      {(updateMutation.error || cancelMutation.error || reRegisterMutation.error) ? (
         <Alert variant="destructive">
           <AlertDescription>
-            {updateMutation.error?.message ?? cancelMutation.error?.message ?? "펀딩 처리에 실패했습니다."}
+            {updateMutation.error?.message ?? cancelMutation.error?.message ?? reRegisterMutation.error?.message ?? "펀딩 처리에 실패했습니다."}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -129,6 +169,12 @@ function FundingDetailEditor({ campaign, campaignId }) {
               <Button size="sm" variant="destructive" onClick={handleCancel} disabled={cancelMutation.isPending}>
                 <Ban size={14} />
                 캠페인 취소
+              </Button>
+            ) : null}
+            {RE_REGISTERABLE_STATUSES.includes(campaign.statusCode) ? (
+              <Button size="sm" variant="outline" onClick={handleReRegister} disabled={reRegisterMutation.isPending}>
+                <RotateCcw size={14} />
+                {reRegisterMutation.isPending ? "재등록 중..." : "펀딩 재등록"}
               </Button>
             ) : null}
             <Button onClick={handleSubmit} disabled={updateMutation.isPending}>

@@ -48,6 +48,18 @@ export async function cancelCampaign(campaignId, reason) {
   }
 }
 
+export async function reactivateCampaign(campaignId, payload) {
+  if (isDemoModeEnabled()) {
+    return demoUpdateCampaign(campaignId, payload)
+  }
+  try {
+    const response = await apiInstance.post(`/campaigns/${campaignId}/reactivate`, payload)
+    return unwrapApiResponseBody(response, "펀딩 캠페인 재활성화에 실패했습니다.")
+  } catch (error) {
+    throw normalizeApiError(error, "펀딩 캠페인 재활성화에 실패했습니다.")
+  }
+}
+
 export async function getCampaigns(params = {}) {
   if (isDemoModeEnabled()) {
     return demoGetCampaigns(params)

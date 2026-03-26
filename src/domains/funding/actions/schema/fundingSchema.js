@@ -1,10 +1,7 @@
 import { z } from "zod"
 
 export const campaignCreateSchema = z.object({
-  itemId: z.coerce
-    .number({ invalid_type_error: "아이템을 선택해주세요." })
-    .int()
-    .min(1, "아이템을 선택해주세요."),
+  itemId: z.string().min(1, "아이템을 선택해주세요."),
   fundingType: z.enum(["QUANTITY_BASED", "AMOUNT_BASED"], {
     required_error: "펀딩 유형을 선택해주세요.",
   }),

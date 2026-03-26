@@ -21,7 +21,7 @@ export async function getSellerProducts() {
   }
 
   try {
-    const response = await apiInstance.get("/products")
+    const response = await apiInstance.get("/seller/products")
     return unwrapApiResponseBody(response, "상품 목록을 불러오지 못했습니다.")
   } catch (error) {
     throw normalizeApiError(error, "상품 목록 조회에 실패했습니다.")
@@ -95,13 +95,17 @@ export async function toggleProductStatus(itemId, status) {
   }
 }
 
-export async function deleteProduct(itemId) {
+export async function deleteProduct(itemId, itemType = "GOODS") {
   if (isDemoModeEnabled()) {
     return demoDeleteProduct(itemId)
   }
 
+  const path = itemType === "PERFORMANCE" ? `/performances/${itemId}`
+    : itemType === "GOODS" ? `/goods/${itemId}`
+    : `/products/${itemId}`
+
   try {
-    const response = await apiInstance.delete(`/products/${itemId}`)
+    const response = await apiInstance.delete(path)
     return unwrapApiResponseBody(response, "상품 삭제에 실패했습니다.")
   } catch (error) {
     throw normalizeApiError(error, "상품 삭제에 실패했습니다.")

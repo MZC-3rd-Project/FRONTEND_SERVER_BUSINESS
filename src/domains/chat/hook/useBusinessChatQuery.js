@@ -11,6 +11,7 @@ export function useChatRoomsQuery(params = { size: 20 }) {
   return useQuery({
     queryKey: ["business-chat", "rooms", params],
     queryFn: () => fetchMyChatRooms(params),
+    refetchInterval: 15_000, // 15초마다 새 문의방 자동 감지
   })
 }
 
@@ -27,26 +28,17 @@ export function useSendChatMessageMutation() {
 
   return useMutation({
     mutationFn: ({ roomId, payload }) => sendChatRoomMessage(roomId, payload),
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
+      // 메시지는 liveMessages 로컬 상태로 관리 — 리페치 금지 (스크롤 리셋 방지)
       queryClient.invalidateQueries({ queryKey: ["business-chat", "rooms"] })
-      queryClient.invalidateQueries({
-        queryKey: ["business-chat", "messages", variables.roomId],
-      })
     },
   })
 }
 
 export function useUpdateChatReadPointerMutation() {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: ({ roomId, lastReadMessageId }) =>
       updateChatReadPointer(roomId, lastReadMessageId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["business-chat", "rooms"] })
-      queryClient.invalidateQueries({
-        queryKey: ["business-chat", "messages", variables.roomId],
-      })
-    },
+    // 읽음 처리는 rooms 목록(unreadCount)만 갱신 — messages 리페치 금지
   })
 }

@@ -84,7 +84,7 @@ function ItemsForm({ onReset }) {
 
   const { data: categoryTree = [] } = useCategoriesQuery()
   const { data: myStore } = useMyStoreQuery()
-  const { data: productsPayload } = useSellerProductsQuery()
+  const { data: productsPayload, isLoading: isProductsLoading, isError: isProductsError, error: productsError } = useSellerProductsQuery()
   const items = productsPayload?.items ?? []
   const toggleStatusMutation = useToggleStatusMutation()
   const deleteItemMutation = useDeleteItemMutation()
@@ -121,7 +121,7 @@ function ItemsForm({ onReset }) {
     if (!window.confirm(`"${getItemTitle(item)}" 상품을 삭제하시겠습니까?`)) {
       return
     }
-    deleteItemMutation.mutate(item.id)
+    deleteItemMutation.mutate({ itemId: item.id, itemType: getItemType(item) })
   }
 
   if (state.success) {
@@ -214,7 +214,21 @@ function ItemsForm({ onReset }) {
         </div>
 
         <CardContent className="p-6">
-          {activeItems.length > 0 ? (
+          {isProductsLoading && (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="animate-pulse rounded-[1.6rem] bg-muted h-32" />
+              ))}
+            </div>
+          )}
+          {isProductsError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>
+                상품 목록을 불러오지 못했습니다: {productsError?.message ?? "알 수 없는 오류"}
+              </AlertDescription>
+            </Alert>
+          )}
+          {!isProductsLoading && activeItems.length > 0 ? (
             <div className="grid gap-4 lg:grid-cols-2">
               {activeItems.map((item) => {
                 const status = getItemStatus(item)
@@ -297,7 +311,7 @@ function ItemsForm({ onReset }) {
                 )
               })}
             </div>
-          ) : (
+          ) : !isProductsLoading ? (
             <div className="rounded-[1.8rem] border border-dashed border-border px-6 py-10 text-center">
               <AlertCircle size={24} className="mx-auto text-primary/70" />
               <h3 className="mt-4 text-lg font-semibold text-foreground">
@@ -307,7 +321,7 @@ function ItemsForm({ onReset }) {
                 아래 신규 등록 폼에서 바로 추가할 수 있습니다.
               </p>
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 

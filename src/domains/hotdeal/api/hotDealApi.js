@@ -20,6 +20,42 @@ export async function createHotDeal(payload) {
   }
 }
 
+export async function updateHotDeal(hotDealId, payload) {
+  if (isDemoModeEnabled()) {
+    return demoGetHotDealById(hotDealId)
+  }
+  try {
+    const response = await apiInstance.put(`/v1/hot-deals/${hotDealId}`, payload)
+    return unwrapApiResponseBody(response, "핫딜 수정에 실패했습니다.")
+  } catch (error) {
+    throw normalizeApiError(error, "핫딜 수정에 실패했습니다.")
+  }
+}
+
+export async function deleteHotDeal(hotDealId) {
+  if (isDemoModeEnabled()) {
+    return null
+  }
+  try {
+    const response = await apiInstance.delete(`/v1/hot-deals/${hotDealId}`)
+    return unwrapApiResponseBody(response, "핫딜 삭제에 실패했습니다.")
+  } catch (error) {
+    throw normalizeApiError(error, "핫딜 삭제에 실패했습니다.")
+  }
+}
+
+export async function restoreHotDeal(hotDealId) {
+  if (isDemoModeEnabled()) {
+    return demoGetHotDealById(hotDealId)
+  }
+  try {
+    const response = await apiInstance.post(`/v1/hot-deals/${hotDealId}/restore`)
+    return unwrapApiResponseBody(response, "핫딜 복구에 실패했습니다.")
+  } catch (error) {
+    throw normalizeApiError(error, "핫딜 복구에 실패했습니다.")
+  }
+}
+
 export async function getHotDeals(params = {}) {
   if (isDemoModeEnabled()) {
     return demoGetHotDeals(params)

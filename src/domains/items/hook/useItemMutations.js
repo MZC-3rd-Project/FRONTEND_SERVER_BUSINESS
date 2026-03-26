@@ -15,7 +15,7 @@ export function useToggleStatusMutation() {
 export function useDeleteItemMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (itemId) => deleteProduct(itemId),
+    mutationFn: ({ itemId, itemType }) => deleteProduct(itemId, itemType),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: itemKeys.products() })
     },

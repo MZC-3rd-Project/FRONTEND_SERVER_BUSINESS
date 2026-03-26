@@ -9,26 +9,30 @@ export default defineConfig({
   server: {
     port: 3001,
     proxy: {
-      "/api/store": {
-        target: "http://localhost:8072",
+      "/login": {
+        target: "http://localhost:18081",
         changeOrigin: true,
       },
-      "/api/products": {
-        target: "http://localhost:8084",
+      "/api": {
+        target: "http://localhost:18081",
         changeOrigin: true,
       },
-      "/api/funding":{
-        target: "http://localhost:8086",
+      "/ws/chat": {
+        target: "ws://localhost:18081",
         changeOrigin: true,
+        ws: true,
+        configure: (proxy) => {
+          proxy.on("error", (err) => {
+            // WS 연결 종료 후 proxy가 upstream에 쓰려 할 때 발생하는 정상적인 소켓 에러 — 무시
+            if (
+              err.code === "ECONNRESET" ||
+              err.message?.includes("socket has been ended") ||
+              err.message?.includes("write after end")
+            ) return
+            console.error("[ws-proxy]", err.message)
+          })
+        },
       },
-      "/api/campaigns":{
-        target: "http://localhost:8086",
-        changeOrigin: true,
-      },
-      "/api/v1/hot-deals":{
-        target: "http://localhost:8089",
-        changeOrigin: true,
-      }
     }
 
   },

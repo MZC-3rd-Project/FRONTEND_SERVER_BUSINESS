@@ -32,7 +32,7 @@ export async function createCampaignAction(prevState, formData) {
     })
     return { success: true }
   } catch (error) {
-    const message = error?.response?.data?.error?.message ?? "펀딩 캠페인 생성에 실패했습니다."
+    const message = error?.message ?? "펀딩 캠페인 생성에 실패했습니다."
     return { success: false, errors: { _root: [message] } }
   }
 }
