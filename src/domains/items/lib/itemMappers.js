@@ -30,14 +30,19 @@ function toId(value, fallback = null) {
 function resolveThumbnailMediaId(raw = {}) {
   return toId(
     raw?.thumbnailMediaId
+    ?? raw?.image?.thumbnail?.mediaId
     ?? raw?.images?.thumbnail?.mediaId
+    ?? raw?.image?.thumbnail?.id
     ?? raw?.thumbnail?.mediaId
+    ?? raw?.thumbnail?.id
   )
 }
 
 function resolveThumbnailImageId(raw = {}) {
   return toId(
     raw?.thumbnailImageId
+    ?? raw?.image?.thumbnail?.imageId
+    ?? raw?.image?.thumbnail?.id
     ?? raw?.images?.thumbnail?.id
     ?? raw?.thumbnail?.id
   )
@@ -46,7 +51,11 @@ function resolveThumbnailImageId(raw = {}) {
 function resolveThumbnailUrl(raw = {}) {
   return toText(
     raw?.thumbnailUrl
+    ?? raw?.image?.thumbnail?.mediaUrl
+    ?? raw?.image?.thumbnail?.url
     ?? raw?.images?.thumbnail?.mediaUrl
+    ?? raw?.images?.thumbnail?.url
+    ?? raw?.thumbnail?.url
     ?? raw?.thumbnail?.mediaUrl
   )
 }

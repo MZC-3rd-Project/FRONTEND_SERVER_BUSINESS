@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ImagePlus } from "lucide-react"
 
@@ -11,15 +12,18 @@ export default function ItemThumbnail({
   className,
   fallbackLabel = "이미지 없음",
 }) {
+  const [failedPreviewUrl, setFailedPreviewUrl] = useState("")
+  const hasPreviewError = Boolean(previewUrl) && failedPreviewUrl === previewUrl
+
   const { data: fetchedUrl, isPending } = useQuery({
     queryKey: ["media", "url", String(mediaId ?? "")],
     queryFn: () => getMediaUrl(String(mediaId)),
-    enabled: Boolean(mediaId) && !previewUrl,
+    enabled: Boolean(mediaId) && (!previewUrl || hasPreviewError),
     staleTime: 5 * 60_000,
     retry: 1,
   })
 
-  const imageUrl = previewUrl || fetchedUrl || ""
+  const imageUrl = (hasPreviewError ? "" : previewUrl) || fetchedUrl || ""
 
   if (!imageUrl) {
     return (
@@ -42,6 +46,11 @@ export default function ItemThumbnail({
     <img
       src={imageUrl}
       alt={alt}
+      onError={() => {
+        if (previewUrl && !hasPreviewError) {
+          setFailedPreviewUrl(previewUrl)
+        }
+      }}
       className={cn("rounded-[1.25rem] object-cover", className)}
     />
   )

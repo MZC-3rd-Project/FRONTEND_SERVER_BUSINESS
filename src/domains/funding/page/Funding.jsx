@@ -137,6 +137,7 @@ function FundingForm({ onReset }) {
                     <div className="mb-4 flex items-start gap-4">
                       <ItemThumbnail
                         mediaId={campaign.thumbnailMediaId}
+                        previewUrl={campaign.thumbnailUrl}
                         alt={campaign.title}
                         className="h-20 w-20 shrink-0"
                         fallbackLabel="펀딩 이미지 없음"

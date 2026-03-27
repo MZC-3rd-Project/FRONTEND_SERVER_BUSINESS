@@ -37,6 +37,29 @@ function formatPrice(value) {
   return `${currencyFormatter.format(number)}원`
 }
 
+function resolveThumbnailMediaId(raw = {}) {
+  return toId(
+    raw?.thumbnailMediaId
+    ?? raw?.image?.thumbnail?.mediaId
+    ?? raw?.images?.thumbnail?.mediaId
+    ?? raw?.image?.thumbnail?.id
+    ?? raw?.thumbnail?.mediaId
+    ?? raw?.thumbnail?.id
+  )
+}
+
+function resolveThumbnailUrl(raw = {}) {
+  return toText(
+    raw?.thumbnailUrl
+    ?? raw?.image?.thumbnail?.mediaUrl
+    ?? raw?.image?.thumbnail?.url
+    ?? raw?.images?.thumbnail?.mediaUrl
+    ?? raw?.images?.thumbnail?.url
+    ?? raw?.thumbnail?.mediaUrl
+    ?? raw?.thumbnail?.url
+  )
+}
+
 function mapFundingStatus(status) {
   switch (String(status || "").toUpperCase()) {
     case "ACTIVE":
@@ -88,7 +111,8 @@ function mapCampaign(raw = {}) {
     id: toId(raw?.campaignId ?? raw?.id),
     itemId: toId(raw?.itemId),
     sellerId: toId(raw?.sellerId),
-    thumbnailMediaId: toId(raw?.thumbnailMediaId),
+    thumbnailMediaId: resolveThumbnailMediaId(raw),
+    thumbnailUrl: resolveThumbnailUrl(raw),
     title: toText(raw?.title, "제목 없는 펀딩"),
     summary: toText(raw?.summary),
     makerName: toText(raw?.makerName, "메이커 정보 준비 중"),
