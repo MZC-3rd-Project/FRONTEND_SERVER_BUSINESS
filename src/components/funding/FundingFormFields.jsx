@@ -6,6 +6,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Target, Calendar, DollarSign, Hash, Package } from "lucide-react"
+import ItemThumbnailField from "@/components/items/ItemThumbnailField.jsx"
 
 function FieldError({ errors, name }) {
   return errors?.[name] && (
@@ -14,14 +15,34 @@ function FieldError({ errors, name }) {
 }
 
 export default function FundingFormFields({
-  state, formAction, isPending, fundingType, itemId, setItemId, products,
+  state,
+  formAction,
+  isPending,
+  fundingType,
+  itemId,
+  setItemId,
+  products,
+  thumbnail,
+  setThumbnail,
+  onThumbnailUploadingChange,
 }) {
   return (
     <form action={formAction}>
       <input type="hidden" name="fundingType" value={fundingType} />
       <input type="hidden" name="itemId" value={itemId} />
+      <input type="hidden" name="thumbnailMediaId" value={thumbnail?.mediaId ?? ""} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <ItemThumbnailField
+            label="펀딩 대표 이미지"
+            hint="펀딩 카드와 상세 화면에서 사용할 대표 이미지를 등록합니다."
+            value={thumbnail}
+            onChange={setThumbnail}
+            onUploadingChange={onThumbnailUploadingChange}
+            disabled={isPending}
+          />
+        </div>
 
         <div className="flex flex-col gap-1.5 sm:col-span-2">
           <Label className="flex items-center gap-1">

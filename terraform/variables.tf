@@ -15,3 +15,9 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+
+variable "gateway_origin_domain_name" {
+  description = "Business gateway ALB domain name used by CloudFront for API and auth proxy paths"
+  type        = string
+  default     = "k8s-donmoadevbusiness-67ac2b4a2a-1835686106.ap-northeast-2.elb.amazonaws.com"
+}

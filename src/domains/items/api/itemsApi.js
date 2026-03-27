@@ -1,4 +1,4 @@
-import apiInstance from "@/common/api/apiInstance.js"
+import apiInstance, { bffApiInstance } from "@/common/api/apiInstance.js"
 import { normalizeApiError, unwrapApiResponseBody } from "@/common/api/responseUtils.js"
 import {
   demoCreateGoods,
@@ -14,6 +14,14 @@ import {
   demoUpdatePerformance,
   isDemoModeEnabled,
 } from "@/domains/management/mock/demoBackend.js"
+
+function buildItemImageRequests(thumbnailMediaId) {
+  if (!thumbnailMediaId) {
+    return []
+  }
+
+  return [{ mediaId: Number(thumbnailMediaId), sortOrder: 0, isThumbnail: true }]
+}
 
 export async function getSellerProducts() {
   if (isDemoModeEnabled()) {
@@ -61,8 +69,16 @@ export async function createGoods(payload) {
     return demoCreateGoods(payload)
   }
 
+  const { thumbnailMediaId, ...itemPayload } = payload
+
   try {
-    const response = await apiInstance.post("/goods", payload)
+    const response = await bffApiInstance.post("/bff/v1/goods", {
+      item: {
+        ...itemPayload,
+        ...(thumbnailMediaId ? { thumbnailMediaId } : {}),
+      },
+      images: buildItemImageRequests(thumbnailMediaId),
+    })
     return unwrapApiResponseBody(response, "굿즈 등록에 실패했습니다.")
   } catch (error) {
     throw normalizeApiError(error, "굿즈 등록에 실패했습니다.")
@@ -74,8 +90,16 @@ export async function createPerformance(payload) {
     return demoCreatePerformance(payload)
   }
 
+  const { thumbnailMediaId, ...itemPayload } = payload
+
   try {
-    const response = await apiInstance.post("/performances", payload)
+    const response = await bffApiInstance.post("/bff/v1/performances", {
+      item: {
+        ...itemPayload,
+        ...(thumbnailMediaId ? { thumbnailMediaId } : {}),
+      },
+      images: buildItemImageRequests(thumbnailMediaId),
+    })
     return unwrapApiResponseBody(response, "공연 등록에 실패했습니다.")
   } catch (error) {
     throw normalizeApiError(error, "공연 등록에 실패했습니다.")
@@ -143,8 +167,31 @@ export async function updateGoods(itemId, payload) {
     return demoUpdateGoods(itemId, payload)
   }
 
+  const {
+    currentThumbnailImageId,
+    currentThumbnailMediaId,
+    thumbnailMediaId,
+    clearThumbnail,
+    ...itemPayload
+  } = payload
+  const deleteImageIds = []
+
+  if (currentThumbnailImageId && (clearThumbnail || (thumbnailMediaId && Number(thumbnailMediaId) !== Number(currentThumbnailMediaId)))) {
+    deleteImageIds.push(Number(currentThumbnailImageId))
+  }
+
   try {
-    const response = await apiInstance.put(`/goods/${itemId}`, payload)
+    const response = await bffApiInstance.put(`/bff/v1/goods/${itemId}`, {
+      item: {
+        ...itemPayload,
+        ...(thumbnailMediaId ? { thumbnailMediaId } : {}),
+        ...(clearThumbnail ? { clearThumbnail: true } : {}),
+      },
+      ...(thumbnailMediaId && Number(thumbnailMediaId) !== Number(currentThumbnailMediaId)
+        ? { addImages: buildItemImageRequests(thumbnailMediaId) }
+        : {}),
+      ...(deleteImageIds.length > 0 ? { deleteImageIds } : {}),
+    })
     return unwrapApiResponseBody(response, "굿즈 수정에 실패했습니다.")
   } catch (error) {
     throw normalizeApiError(error, "굿즈 수정에 실패했습니다.")
@@ -156,8 +203,31 @@ export async function updatePerformance(itemId, payload) {
     return demoUpdatePerformance(itemId, payload)
   }
 
+  const {
+    currentThumbnailImageId,
+    currentThumbnailMediaId,
+    thumbnailMediaId,
+    clearThumbnail,
+    ...itemPayload
+  } = payload
+  const deleteImageIds = []
+
+  if (currentThumbnailImageId && (clearThumbnail || (thumbnailMediaId && Number(thumbnailMediaId) !== Number(currentThumbnailMediaId)))) {
+    deleteImageIds.push(Number(currentThumbnailImageId))
+  }
+
   try {
-    const response = await apiInstance.put(`/performances/${itemId}`, payload)
+    const response = await bffApiInstance.put(`/bff/v1/performances/${itemId}`, {
+      item: {
+        ...itemPayload,
+        ...(thumbnailMediaId ? { thumbnailMediaId } : {}),
+        ...(clearThumbnail ? { clearThumbnail: true } : {}),
+      },
+      ...(thumbnailMediaId && Number(thumbnailMediaId) !== Number(currentThumbnailMediaId)
+        ? { addImages: buildItemImageRequests(thumbnailMediaId) }
+        : {}),
+      ...(deleteImageIds.length > 0 ? { deleteImageIds } : {}),
+    })
     return unwrapApiResponseBody(response, "공연 수정에 실패했습니다.")
   } catch (error) {
     throw normalizeApiError(error, "공연 수정에 실패했습니다.")

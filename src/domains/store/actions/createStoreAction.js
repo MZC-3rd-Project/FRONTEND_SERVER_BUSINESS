@@ -4,6 +4,24 @@ import {StoreSchema} from "@/domains/store/actions/schema/StoreSchema.js";
 export async function createStoreAction(prevState, formData) {
   const mainAddress = JSON.parse(formData.get("addresses") || "[]")[0]
   const mainContact = JSON.parse(formData.get("contacts") || "[]")[0]
+  const thumbnail = JSON.parse(formData.get("thumbnail") || "null")
+  const gallery = JSON.parse(formData.get("gallery") || "[]")
+  const images = [
+    thumbnail?.mediaId
+      ? {
+          imageType: "THUMBNAIL",
+          mediaId: Number(thumbnail.mediaId),
+          sortOrder: 0,
+        }
+      : null,
+    ...gallery
+      .filter((image) => image?.mediaId)
+      .map((image, index) => ({
+        imageType: "GALLERY",
+        mediaId: Number(image.mediaId),
+        sortOrder: index + 1,
+      })),
+  ].filter(Boolean)
 
   const result = StoreSchema.safeParse({
     storeName: formData.get("store_name"),
@@ -12,6 +30,7 @@ export async function createStoreAction(prevState, formData) {
     contactValue: mainContact?.contact_value,
     contactType: mainContact?.contact_type,
     description: formData.get("description") || null,
+    images: images.length > 0 ? images : undefined,
   })
 
   if (!result.success) {

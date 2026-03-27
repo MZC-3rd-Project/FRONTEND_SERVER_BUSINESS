@@ -2,6 +2,7 @@ import { z } from "zod"
 
 export const campaignCreateSchema = z.object({
   itemId: z.string().min(1, "아이템을 선택해주세요."),
+  thumbnailMediaId: z.string().optional(),
   fundingType: z.enum(["QUANTITY_BASED", "AMOUNT_BASED"], {
     required_error: "펀딩 유형을 선택해주세요.",
   }),

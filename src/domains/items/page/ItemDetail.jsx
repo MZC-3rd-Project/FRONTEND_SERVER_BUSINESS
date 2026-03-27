@@ -5,6 +5,7 @@ import { Save, Store, Ticket } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import ItemThumbnailField from "@/components/items/ItemThumbnailField.jsx"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -72,8 +73,33 @@ function buildItemForm(item) {
   }
 }
 
+function buildThumbnailState(item) {
+  const mediaId =
+    item?.thumbnailMediaId
+    ?? item?.images?.thumbnail?.mediaId
+    ?? item?.thumbnail?.mediaId
+    ?? null
+  const previewUrl =
+    item?.thumbnailUrl
+    ?? item?.images?.thumbnail?.mediaUrl
+    ?? item?.thumbnail?.mediaUrl
+    ?? null
+
+  if (!mediaId && !previewUrl) {
+    return null
+  }
+
+  return {
+    mediaId: mediaId ? String(mediaId) : null,
+    previewUrl,
+    fileName: item?.title ?? "대표 이미지",
+  }
+}
+
 function ItemDetailEditor({ item, categories, itemId }) {
   const [form, setForm] = useState(() => buildItemForm(item))
+  const [thumbnail, setThumbnail] = useState(() => buildThumbnailState(item))
+  const [isThumbnailUploading, setIsThumbnailUploading] = useState(false)
   const updateGoodsMutation = useUpdateGoodsMutation(itemId)
   const updatePerformanceMutation = useUpdatePerformanceMutation(itemId)
 
@@ -89,6 +115,10 @@ function ItemDetailEditor({ item, categories, itemId }) {
         title: form.title,
         categoryId: form.categoryId ? Number(form.categoryId) : undefined,
         price: form.price ? Number(form.price) : undefined,
+        currentThumbnailImageId: item?.thumbnailImageId ? Number(item.thumbnailImageId) : undefined,
+        currentThumbnailMediaId: item?.thumbnailMediaId ? Number(item.thumbnailMediaId) : undefined,
+        thumbnailMediaId: thumbnail?.mediaId ? Number(thumbnail.mediaId) : undefined,
+        clearThumbnail: item?.thumbnailMediaId && !thumbnail?.mediaId ? true : undefined,
         description: form.description || undefined,
         venue: form.venue || undefined,
         performanceDate: form.performanceDate || undefined,
@@ -116,6 +146,10 @@ function ItemDetailEditor({ item, categories, itemId }) {
       title: form.title,
       categoryId: form.categoryId ? Number(form.categoryId) : undefined,
       price: form.price ? Number(form.price) : undefined,
+      currentThumbnailImageId: item?.thumbnailImageId ? Number(item.thumbnailImageId) : undefined,
+      currentThumbnailMediaId: item?.thumbnailMediaId ? Number(item.thumbnailMediaId) : undefined,
+      thumbnailMediaId: thumbnail?.mediaId ? Number(thumbnail.mediaId) : undefined,
+      clearThumbnail: item?.thumbnailMediaId && !thumbnail?.mediaId ? true : undefined,
       description: form.description || undefined,
       options: [
         {
@@ -131,7 +165,7 @@ function ItemDetailEditor({ item, categories, itemId }) {
     })
   }
 
-  const saveBusy = updateGoodsMutation.isPending || updatePerformanceMutation.isPending
+  const saveBusy = updateGoodsMutation.isPending || updatePerformanceMutation.isPending || isThumbnailUploading
   const saveError = updateGoodsMutation.error || updatePerformanceMutation.error
 
   return (
@@ -159,6 +193,17 @@ function ItemDetailEditor({ item, categories, itemId }) {
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <ItemThumbnailField
+                label="대표 이미지"
+                hint="클라이언트 상품 카드와 상세 상단에서 보일 이미지입니다."
+                value={thumbnail}
+                onChange={setThumbnail}
+                onUploadingChange={setIsThumbnailUploading}
+                disabled={saveBusy}
+              />
+            </div>
+
             <div className="sm:col-span-2">
               <Label>이름</Label>
               <Input value={form.title} onChange={(event) => handleChange("title", event.target.value)} />

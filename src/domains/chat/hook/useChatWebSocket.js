@@ -20,9 +20,12 @@ export function useChatWebSocket({ onFrame }) {
   const wsRef = useRef(null)
   const heartbeatRef = useRef(null)
   const onFrameRef = useRef(onFrame)
-  onFrameRef.current = onFrame
 
   const [status, setStatus] = useState("disconnected")
+
+  useEffect(() => {
+    onFrameRef.current = onFrame
+  }, [onFrame])
 
   const send = useCallback((frame) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

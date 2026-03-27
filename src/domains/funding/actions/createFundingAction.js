@@ -4,6 +4,7 @@ import { createCampaign } from "../api/fundingApi.js"
 export async function createCampaignAction(prevState, formData) {
   const result = campaignCreateSchema.safeParse({
     itemId: formData.get("itemId"),
+    thumbnailMediaId: formData.get("thumbnailMediaId") || undefined,
     fundingType: formData.get("fundingType"),
     title: formData.get("title") || undefined,
     summary: formData.get("summary") || undefined,
@@ -20,11 +21,12 @@ export async function createCampaignAction(prevState, formData) {
     return { success: false, errors: result.error.flatten().fieldErrors }
   }
 
-  const { startAt, endAt, goalQuantity, minAmount, ...rest } = result.data
+  const { startAt, endAt, goalQuantity, minAmount, thumbnailMediaId, ...rest } = result.data
 
   try {
     await createCampaign({
       ...rest,
+      ...(thumbnailMediaId ? { thumbnailMediaId: Number(thumbnailMediaId) } : {}),
       ...(goalQuantity ? { goalQuantity } : {}),
       ...(minAmount ? { minAmount } : {}),
       startAt: `${startAt}T00:00:00`,

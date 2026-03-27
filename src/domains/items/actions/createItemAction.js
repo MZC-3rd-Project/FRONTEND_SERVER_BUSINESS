@@ -3,6 +3,8 @@ import { createGoods, createPerformance } from "../api/itemsApi.js"
 
 export async function createItemAction(prevState, formData) {
   const itemType = formData.get("itemType")
+  const rawThumbnailMediaId = formData.get("thumbnailMediaId")
+  const thumbnailMediaId = rawThumbnailMediaId ? Number(rawThumbnailMediaId) : undefined
 
   console.log(formData);
 
@@ -31,6 +33,7 @@ export async function createItemAction(prevState, formData) {
         price,
         storeId,
         categoryId,
+        thumbnailMediaId,
         options: [{ optionName: "기본", additionalPrice: 0, stockQuantity: stock }],
         shippingInfo: { shippingFee: 0, estimatedDays: 3 },
       })
@@ -81,6 +84,7 @@ export async function createItemAction(prevState, formData) {
         price,
         storeId,
         categoryId,
+        thumbnailMediaId,
         venue,
         venueAddress,
         performanceDate,

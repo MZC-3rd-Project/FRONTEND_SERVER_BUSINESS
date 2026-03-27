@@ -19,11 +19,13 @@ import MessageBubble from "@/domains/chat/components/MessageBubble.jsx"
 import WsStatusBadge from "@/domains/chat/components/WsStatusBadge.jsx"
 import {
   buildClientMessageId,
+  extractCurrentUserIds,
   mergeCollections,
   readSelfSenderIds,
   saveSelfSenderId,
   upsertMessage,
 } from "@/domains/chat/utils/chatHelpers.js"
+import { useAuthSessionQuery } from "@/domains/auth/hook/useAuthSessionQuery.js"
 import { demoChatMessagesByRoomId, demoChatRooms } from "@/domains/management/mock/demoData.js"
 import { cn } from "@/lib/utils"
 
@@ -40,6 +42,7 @@ export default function ChatInboxPage() {
 
   const sendMessageMutation = useSendChatMessageMutation()
   const { mutateAsync: updateReadPointer } = useUpdateChatReadPointerMutation()
+  const authSessionQuery = useAuthSessionQuery()
 
   const roomsQuery = useChatRoomsQuery({ size: 20 })
   const realRooms = useMemo(() => roomsQuery.data?.items ?? [], [roomsQuery.data?.items])
@@ -52,7 +55,15 @@ export default function ChatInboxPage() {
 
   const selectedRoom = rooms.find((r) => String(r.roomId) === activeRoomId) ?? null
 
-  const ownSenderIdSet = useMemo(() => new Set(knownSelfSenderIds), [knownSelfSenderIds])
+  const ownSenderIdSet = useMemo(
+    () => new Set([...extractCurrentUserIds(authSessionQuery.data), ...knownSelfSenderIds]),
+    [authSessionQuery.data, knownSelfSenderIds],
+  )
+
+  const isOwnSender = useCallback(
+    (senderId) => Boolean(senderId) && ownSenderIdSet.has(String(senderId)),
+    [ownSenderIdSet],
+  )
 
   function rememberSelfSenderId(id) {
     if (!id) return
@@ -69,11 +80,11 @@ export default function ChatInboxPage() {
         ...m,
         messageId: m.messageId ? String(m.messageId) : "",
         senderId: m.senderId ? String(m.senderId) : "",
-        fromSelf: ownSenderIdSet.has(String(m.senderId)),
+        fromSelf: isOwnSender(m.senderId),
         deliveryState: "sent",
       }))
       .reverse() // REST returns newest first → reverse for chronological display
-  }, [usingDemoChat, messagesQuery.data?.items, ownSenderIdSet, activeRoomId])
+  }, [usingDemoChat, messagesQuery.data?.items, isOwnSender, activeRoomId])
 
   // ── Live WS messages ─────────────────────────────────────────────────────
   const liveMessages = useMemo(
@@ -104,7 +115,6 @@ export default function ChatInboxPage() {
   // Reset live messages & read pointer when room changes
   useEffect(() => {
     lastReadIdRef.current = ""
-    setLiveMessageState({ roomId: activeRoomId, messages: [] })
   }, [activeRoomId])
 
   // Auto-scroll to bottom (컨테이너 직접 제어 — 페이지 스크롤 방지)
@@ -122,10 +132,15 @@ export default function ChatInboxPage() {
       if (!roomId) return
 
       const senderId = msg.senderId ? String(msg.senderId) : ""
+      const messageId = msg.messageId ? String(msg.messageId) : ""
+      const clientMessageId = msg.clientMessageId ? String(msg.clientMessageId) : ""
       const fromSelf =
-        ownSenderIdSet.has(senderId) ||
+        isOwnSender(senderId) ||
         liveMessages.some(
-          (c) => c.fromSelf && c.messageId && c.messageId === String(msg.messageId),
+          (candidate) =>
+            candidate.fromSelf &&
+            ((messageId && candidate.messageId === messageId) ||
+              (clientMessageId && candidate.clientMessageId === clientMessageId)),
         )
 
       if (fromSelf) rememberSelfSenderId(senderId)
@@ -136,7 +151,8 @@ export default function ChatInboxPage() {
           roomId: String(roomId),
           messages: upsertMessage(base, {
             ...msg,
-            messageId: msg.messageId ? String(msg.messageId) : "",
+            messageId,
+            clientMessageId,
             senderId,
             fromSelf,
             deliveryState: "sent",
@@ -146,7 +162,7 @@ export default function ChatInboxPage() {
 
       queryClient.invalidateQueries({ queryKey: ["business-chat", "rooms"] })
     },
-    [ownSenderIdSet, liveMessages, queryClient],
+    [isOwnSender, liveMessages, queryClient],
   )
 
   const { status: wsStatus, subscribeRoom, sendMessage: wsSendMessage } = useChatWebSocket({

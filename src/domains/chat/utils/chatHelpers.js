@@ -23,6 +23,46 @@ export function saveSelfSenderId(id) {
   return next
 }
 
+const CURRENT_USER_ID_PATHS = [
+  ["id"],
+  ["userId"],
+  ["sellerId"],
+  ["memberId"],
+  ["accountId"],
+  ["principalId"],
+  ["user", "id"],
+  ["user", "userId"],
+  ["user", "sellerId"],
+  ["seller", "id"],
+  ["seller", "sellerId"],
+  ["member", "id"],
+  ["member", "memberId"],
+  ["profile", "id"],
+  ["profile", "userId"],
+  ["profile", "sellerId"],
+  ["principal", "id"],
+  ["principal", "userId"],
+  ["principal", "sellerId"],
+]
+
+function readValueAtPath(source, path) {
+  return path.reduce(
+    (current, segment) =>
+      current != null && typeof current === "object" ? current[segment] : undefined,
+    source,
+  )
+}
+
+export function extractCurrentUserIds(session) {
+  return [...new Set(
+    CURRENT_USER_ID_PATHS
+      .map((path) => readValueAtPath(session, path))
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .map((value) => (value == null ? "" : String(value).trim()))
+      .filter(Boolean),
+  )]
+}
+
 // ── Message identity / merge helpers ─────────────────────────────────────────
 function getMessageKeys(msg) {
   const keys = []

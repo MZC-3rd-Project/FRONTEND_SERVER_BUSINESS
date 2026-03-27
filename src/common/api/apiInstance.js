@@ -19,11 +19,29 @@ function parseResponseText(raw) {
   }
 }
 
-const apiInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:8080/api",
+function resolveApiBaseUrl() {
+  return import.meta.env.VITE_API_URL ?? "/api"
+}
+
+function resolveGatewayBaseUrl() {
+  const apiBaseUrl = resolveApiBaseUrl()
+  return apiBaseUrl.replace(/\/api\/?$/, "") || ""
+}
+
+const sharedConfig = {
   timeout: 5000,
   withCredentials: true,
   transformResponse: [parseResponseText],
+}
+
+const apiInstance = axios.create({
+  baseURL: resolveApiBaseUrl(),
+  ...sharedConfig,
+})
+
+export const bffApiInstance = axios.create({
+  baseURL: resolveGatewayBaseUrl(),
+  ...sharedConfig,
 })
 
 export default apiInstance

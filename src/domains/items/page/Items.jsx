@@ -11,6 +11,7 @@ import { createItemAction } from "../actions/createItemAction.js"
 import { itemKeys, useCategoriesQuery, useMyStoreQuery, useSellerProductsQuery } from "../hook/useItemsQuery.js"
 import { useDeleteItemMutation, useToggleStatusMutation } from "../hook/useItemMutations.js"
 import GoodsForm from "@/components/items/GoodsForm.jsx"
+import ItemThumbnail from "@/components/items/ItemThumbnail.jsx"
 import PerformanceForm from "@/components/items/PerformanceForm.jsx"
 import PageIntro from "@/components/layout/PageIntro.jsx"
 import { demoItems } from "@/domains/management/mock/demoData.js"
@@ -240,72 +241,84 @@ function ItemsForm({ onReset }) {
 
                 return (
                   <div key={item.id} className="metric-chip rounded-[1.6rem] px-5 py-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-base font-semibold text-foreground">
-                          {getItemTitle(item)}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Badge variant="outline">{getItemTypeLabel(item)}</Badge>
-                          <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                    <div className="flex gap-4">
+                      <ItemThumbnail
+                        mediaId={item.thumbnailMediaId}
+                        previewUrl={item.thumbnailUrl}
+                        alt={getItemTitle(item)}
+                        className="h-24 w-24 shrink-0"
+                        fallbackLabel="대표 이미지 없음"
+                      />
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-semibold text-foreground">
+                              {getItemTitle(item)}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <Badge variant="outline">{getItemTypeLabel(item)}</Badge>
+                              <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                              Price
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-primary">
+                              {item?.price ? `${numberFormatter.format(item.price)}원` : "-"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                              Reviews
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              평점 {item?.averageRating ?? 0} / 리뷰 {item?.reviewCount ?? 0}개
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                              Item ID
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">{item.id}</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 flex flex-wrap gap-2">
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="outline"
+                          >
+                            <Link to={`/business/items/${item.id}`} state={{ itemType: getItemType(item) }}>
+                              상세/수정
+                            </Link>
+                          </Button>
+                          {nextStatus ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleToggleStatus(item)}
+                              disabled={busy || usingDemoItems}
+                            >
+                              {status === "ON_SALE" ? "숨김 처리" : "판매 시작"}
+                            </Button>
+                          ) : null}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(item)}
+                            disabled={busy || usingDemoItems}
+                          >
+                            <Trash2 size={14} />
+                            삭제
+                          </Button>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                          Price
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-primary">
-                          {item?.price ? `${numberFormatter.format(item.price)}원` : "-"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                          Reviews
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          평점 {item?.averageRating ?? 0} / 리뷰 {item?.reviewCount ?? 0}개
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                          Item ID
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">{item.id}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="outline"
-                      >
-                        <Link to={`/business/items/${item.id}`} state={{ itemType: getItemType(item) }}>
-                          상세/수정
-                        </Link>
-                      </Button>
-                      {nextStatus ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleToggleStatus(item)}
-                          disabled={busy || usingDemoItems}
-                        >
-                          {status === "ON_SALE" ? "숨김 처리" : "판매 시작"}
-                        </Button>
-                      ) : null}
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(item)}
-                        disabled={busy || usingDemoItems}
-                      >
-                        <Trash2 size={14} />
-                        삭제
-                      </Button>
                     </div>
                   </div>
                 )

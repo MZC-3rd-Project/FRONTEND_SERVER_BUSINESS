@@ -1,3 +1,6 @@
+import { useState } from "react"
+
+import ItemThumbnailField from "@/components/items/ItemThumbnailField.jsx"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,13 +18,27 @@ function FieldError({ errors, name }) {
 export default function PerformanceForm({
   state, myStore, perfCategoryId, setPerfCategoryId, perfCategories, formAction, isPending,
 }) {
+  const [thumbnail, setThumbnail] = useState(null)
+  const [isThumbnailUploading, setIsThumbnailUploading] = useState(false)
+
   return (
     <form action={formAction}>
       <input type="hidden" name="itemType" value="performance" />
       <input type="hidden" name="storeId" value={myStore?.id ?? ""} />
       <input type="hidden" name="categoryId" value={perfCategoryId} />
+      <input type="hidden" name="thumbnailMediaId" value={thumbnail?.mediaId ?? ""} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <ItemThumbnailField
+            label="공연 대표 이미지"
+            hint="클라이언트 상품 카드와 상세 상단에 사용할 썸네일입니다."
+            value={thumbnail}
+            onChange={setThumbnail}
+            onUploadingChange={setIsThumbnailUploading}
+            disabled={isPending}
+          />
+        </div>
 
         <div className="flex flex-col gap-1.5 sm:col-span-2">
           <Label htmlFor="perf-name" className="text-sm font-medium">
@@ -151,7 +168,7 @@ export default function PerformanceForm({
       )}
 
       <div className="flex justify-end mt-5 pt-4 border-t border-border">
-        <Button type="submit" disabled={isPending || !myStore?.id}>
+        <Button type="submit" disabled={isPending || !myStore?.id || isThumbnailUploading}>
           {isPending ? "등록 중..." : "공연 등록"}
         </Button>
       </div>

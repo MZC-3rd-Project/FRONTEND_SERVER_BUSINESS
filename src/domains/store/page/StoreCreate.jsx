@@ -974,6 +974,7 @@ function StoreOnboardingFlow() {
   const [step, setStep] = useState(0);
   const [stepErrors, setStepErrors] = useState({});
   const [formData, setFormData] = useState(INITIAL_FORM);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   const [state, formAction, isPending] = useActionState(createStoreAction, {
     success: false,
@@ -987,8 +988,81 @@ function StoreOnboardingFlow() {
     navigate("/business/dashboard", { replace: true });
   }, [navigate, queryClient, state.success]);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value } = e.target;
+
+    if (name === "thumbnail" && value?.file) {
+      setIsUploadingImages(true);
+      setStepErrors((prev) => ({ ...prev, images: null, _step: null }));
+      try {
+        const uploaded = await uploadImageToMedia(value.file);
+        setFormData((prev) => ({
+          ...prev,
+          thumbnail: {
+            mediaId: String(uploaded.mediaId),
+            imageType: "THUMBNAIL",
+            sortOrder: 0,
+            url: uploaded.mediaUrl ?? value.url,
+          },
+        }));
+      } catch {
+        setStepErrors((prev) => ({
+          ...prev,
+          images: "이미지 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        }));
+      } finally {
+        setIsUploadingImages(false);
+      }
+      return;
+    }
+
+    if (name === "gallery" && Array.isArray(value)) {
+      const existingImages = value
+        .filter((image) => !image?.file || image?.mediaId)
+        .map((image, index) => ({
+          ...image,
+          imageType: "GALLERY",
+          sortOrder: index + 1,
+        }));
+      const pendingImages = value.filter((image) => image?.file && !image?.mediaId);
+
+      if (pendingImages.length === 0) {
+        setFormData((prev) => ({ ...prev, gallery: existingImages }));
+        return;
+      }
+
+      setIsUploadingImages(true);
+      setStepErrors((prev) => ({ ...prev, images: null, _step: null }));
+      try {
+        const uploadedImages = [];
+        for (const [index, image] of pendingImages.entries()) {
+          const uploaded = await uploadImageToMedia(image.file);
+          uploadedImages.push({
+            mediaId: String(uploaded.mediaId),
+            imageType: "GALLERY",
+            sortOrder: existingImages.length + index + 1,
+            url: uploaded.mediaUrl ?? image.url,
+          });
+        }
+
+        setFormData((prev) => ({
+          ...prev,
+          gallery: [...existingImages, ...uploadedImages].map((image, index) => ({
+            ...image,
+            sortOrder: index + 1,
+          })),
+        }));
+      } catch {
+        setStepErrors((prev) => ({
+          ...prev,
+          images: "갤러리 이미지 업로드에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        }));
+      } finally {
+        setIsUploadingImages(false);
+      }
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (stepErrors[name]) {
       setStepErrors((prev) => ({ ...prev, [name]: null }));
@@ -1100,6 +1174,12 @@ function StoreOnboardingFlow() {
             </Alert>
           )}
 
+          {stepErrors.images && (
+            <Alert variant="destructive">
+              <AlertDescription>{stepErrors.images}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="glass-panel flex flex-col gap-3 rounded-[1.75rem] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {step < FLOW_STEPS.length - 1
@@ -1114,7 +1194,7 @@ function StoreOnboardingFlow() {
                   setStepErrors({});
                   setStep((value) => Math.max(value - 1, 0));
                 }}
-                disabled={step === 0}
+                disabled={step === 0 || isUploadingImages}
               >
                 이전
               </Button>
@@ -1123,6 +1203,7 @@ function StoreOnboardingFlow() {
                   onClick={() => {
                     if (validateStep()) setStep((value) => value + 1);
                   }}
+                  disabled={isUploadingImages}
                 >
                   다음 <ChevronRight size={16} />
                 </Button>
@@ -1142,6 +1223,16 @@ function StoreOnboardingFlow() {
                     value={JSON.stringify(formData.contacts)}
                   />
                   <input type="hidden" name="description" value={formData.description} />
+                  <input
+                    type="hidden"
+                    name="thumbnail"
+                    value={JSON.stringify(formData.thumbnail)}
+                  />
+                  <input
+                    type="hidden"
+                    name="gallery"
+                    value={JSON.stringify(formData.gallery)}
+                  />
                   {state.errors && Object.keys(state.errors).length > 0 && (
                     <Alert variant="destructive">
                       <AlertDescription>
@@ -1151,8 +1242,8 @@ function StoreOnboardingFlow() {
                       </AlertDescription>
                     </Alert>
                   )}
-                  <Button type="submit" disabled={isPending}>
-                    <Check size={16} /> {isPending ? "생성 중..." : "가게 생성"}
+                  <Button type="submit" disabled={isPending || isUploadingImages}>
+                    <Check size={16} /> {isPending ? "생성 중..." : isUploadingImages ? "이미지 업로드 중..." : "가게 생성"}
                   </Button>
                 </form>
               )}

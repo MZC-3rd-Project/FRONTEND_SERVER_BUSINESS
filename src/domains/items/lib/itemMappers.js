@@ -27,6 +27,30 @@ function toId(value, fallback = null) {
   return normalized || fallback
 }
 
+function resolveThumbnailMediaId(raw = {}) {
+  return toId(
+    raw?.thumbnailMediaId
+    ?? raw?.images?.thumbnail?.mediaId
+    ?? raw?.thumbnail?.mediaId
+  )
+}
+
+function resolveThumbnailImageId(raw = {}) {
+  return toId(
+    raw?.thumbnailImageId
+    ?? raw?.images?.thumbnail?.id
+    ?? raw?.thumbnail?.id
+  )
+}
+
+function resolveThumbnailUrl(raw = {}) {
+  return toText(
+    raw?.thumbnailUrl
+    ?? raw?.images?.thumbnail?.mediaUrl
+    ?? raw?.thumbnail?.mediaUrl
+  )
+}
+
 export function formatPrice(value) {
   const number = toNullableNumber(value)
 
@@ -52,8 +76,9 @@ export function mapSellerProductSummary(raw = {}) {
     status,
     averageRating: toNullableNumber(raw?.averageRating) ?? 0,
     reviewCount: toNumber(raw?.reviewCount, 0),
-    thumbnailMediaId: toId(raw?.thumbnailMediaId),
-    thumbnailUrl: toText(raw?.thumbnailUrl),
+    thumbnailImageId: resolveThumbnailImageId(raw),
+    thumbnailMediaId: resolveThumbnailMediaId(raw),
+    thumbnailUrl: resolveThumbnailUrl(raw),
   }
 }
 

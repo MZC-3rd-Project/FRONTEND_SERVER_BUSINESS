@@ -33,15 +33,18 @@ export async function getMediaUrl(mediaId) {
  * 파일 → 미디어 서비스 3단계 업로드
  * 반환: { mediaId: number, mediaUrl: string }
  */
-export async function uploadImageToMedia(file, { ownerType = "STORE", ownerId, usageType, sortOrder = 0 } = {}) {
+export async function uploadImageToMedia(file, { ownerType = null, ownerId = null, usageType = null, sortOrder = null } = {}) {
+  const bindingPayload = {}
+  if (ownerType) bindingPayload.ownerType = ownerType
+  if (ownerId !== null && ownerId !== undefined) bindingPayload.ownerId = ownerId
+  if (usageType) bindingPayload.usageType = usageType
+  if (sortOrder !== null && sortOrder !== undefined) bindingPayload.sortOrder = sortOrder
+
   const intent = await createUploadIntent({
     fileName: file.name,
     contentType: file.type,
     fileSize: file.size,
-    ownerType,
-    ownerId,
-    usageType,
-    sortOrder,
+    ...bindingPayload,
   })
 
   // S3 직접 업로드 (presigned PUT)
@@ -57,9 +60,6 @@ export async function uploadImageToMedia(file, { ownerType = "STORE", ownerId, u
   return confirmUpload({
     mediaId: intent.mediaId,
     uploadToken: intent.uploadToken,
-    ownerType,
-    ownerId,
-    usageType,
-    sortOrder,
+    ...bindingPayload,
   })
 }

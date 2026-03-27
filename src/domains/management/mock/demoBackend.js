@@ -2,13 +2,16 @@ import {
   demoCampaigns,
   demoChatMessagesByRoomId,
   demoChatRooms,
+  demoHotDeals,
   demoHotDealItems,
   demoItems,
   demoReviewsByItemId,
+  demoStore,
 } from "@/domains/management/mock/demoData.js"
 
 const DEMO_MODE_KEY = "donmoa-business:demo-mode"
 const DEMO_STATE_KEY = "donmoa-business:demo-state:v1"
+const DEMO_STATE_VERSION = 2
 const DEMO_USER_ID = 504
 
 const DEMO_CATEGORIES = [
@@ -32,12 +35,21 @@ const DEMO_CATEGORIES = [
   },
 ]
 
+function withSellerContext(items = []) {
+  return items.map((item) => ({
+    ...item,
+    sellerId: DEMO_USER_ID,
+    storeId: demoStore.id,
+  }))
+}
+
 function buildDefaultState() {
   return {
-    store: null,
-    products: [],
-    campaigns: [],
-    hotDeals: [],
+    version: DEMO_STATE_VERSION,
+    store: structuredClone(demoStore),
+    products: withSellerContext(structuredClone(demoItems.concat(demoHotDealItems))),
+    campaigns: structuredClone(demoCampaigns),
+    hotDeals: structuredClone(demoHotDeals),
     reviewsByItemId: structuredClone(demoReviewsByItemId),
     chatRooms: structuredClone(demoChatRooms),
     chatMessagesByRoomId: structuredClone(demoChatMessagesByRoomId),
@@ -49,6 +61,49 @@ function buildDefaultState() {
       hotDeal: 86000,
       message: 99020,
       room: 80010,
+    },
+  }
+}
+
+function hydrateLegacyState(state = {}) {
+  const defaults = buildDefaultState()
+
+  return {
+    ...defaults,
+    ...state,
+    version: DEMO_STATE_VERSION,
+    store: state?.store ?? defaults.store,
+    products:
+      Array.isArray(state?.products) && state.products.length > 0
+        ? state.products
+        : defaults.products,
+    campaigns:
+      Array.isArray(state?.campaigns) && state.campaigns.length > 0
+        ? state.campaigns
+        : defaults.campaigns,
+    hotDeals:
+      Array.isArray(state?.hotDeals) && state.hotDeals.length > 0
+        ? state.hotDeals
+        : defaults.hotDeals,
+    reviewsByItemId:
+      state?.reviewsByItemId && Object.keys(state.reviewsByItemId).length > 0
+        ? state.reviewsByItemId
+        : defaults.reviewsByItemId,
+    chatRooms:
+      Array.isArray(state?.chatRooms) && state.chatRooms.length > 0
+        ? state.chatRooms
+        : defaults.chatRooms,
+    chatMessagesByRoomId:
+      state?.chatMessagesByRoomId && Object.keys(state.chatMessagesByRoomId).length > 0
+        ? state.chatMessagesByRoomId
+        : defaults.chatMessagesByRoomId,
+    categories:
+      Array.isArray(state?.categories) && state.categories.length > 0
+        ? state.categories
+        : defaults.categories,
+    counters: {
+      ...defaults.counters,
+      ...(state?.counters ?? {}),
     },
   }
 }
@@ -94,7 +149,14 @@ function readState() {
   if (!raw) return buildDefaultState()
 
   try {
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    if (parsed?.version === DEMO_STATE_VERSION) {
+      return parsed
+    }
+
+    const migrated = hydrateLegacyState(parsed)
+    writeState(migrated)
+    return migrated
   } catch {
     return buildDefaultState()
   }
@@ -116,14 +178,6 @@ function nextId(state, key) {
   const current = state.counters[key] ?? 1
   state.counters[key] = current + 1
   return current
-}
-
-function mapHotDealsToProductItems(hotDeals) {
-  return hotDeals.map((item) => ({
-    ...item,
-    sellerId: DEMO_USER_ID,
-    storeId: 70001,
-  }))
 }
 
 function normalizeStoreResponse(store) {
@@ -182,13 +236,7 @@ export function demoGetCategories() {
 }
 
 export function demoGetSellerProducts() {
-  const state = readState()
-  const seededProducts =
-    state.products.length > 0
-      ? state.products
-      : mapHotDealsToProductItems(demoItems.concat(demoHotDealItems))
-
-  return { items: seededProducts }
+  return { items: readState().products }
 }
 
 function buildDefaultGoodsDetail(item) {

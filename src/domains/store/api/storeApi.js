@@ -42,8 +42,7 @@ export async function updateStoreStatus(storeId, status) {
 
 export async function getStoreDetail(storeId) {
   try {
-    // BFF 엔드포인트 사용 — 게이트웨이가 mediaUrl을 조합해서 반환
-    const response = await apiInstance.get(`/bff/v1/store/${storeId}`)
+    const response = await apiInstance.get(`/store/${storeId}`)
     return unwrapApiResponseBody(response, "가게 상세 정보를 불러오지 못했습니다.")
   } catch (error) {
     throw normalizeApiError(error, "가게 상세 조회에 실패했습니다.")

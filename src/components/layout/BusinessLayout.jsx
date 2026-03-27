@@ -18,10 +18,17 @@ import {
   Sparkles,
   ShieldCheck,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useAuthSessionQuery } from "@/domains/auth/hook/useAuthSessionQuery.js";
+import {
+  clearAuthRedirectPath,
+  redirectToLogin,
+} from "@/domains/auth/lib/authFlow.js";
+import { logoutFromGateway } from "@/domains/auth/api/authApi.js";
 
 const NAV_ITEMS = [
   {
@@ -101,17 +108,32 @@ const NAV_ITEMS = [
 export default function BusinessLayout({ children }) {
   const location = useLocation();
   const isAuthRoute = location.pathname.startsWith("/auth");
+  const queryClient = useQueryClient();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutPending, setLogoutPending] = useState(false);
   const [dark, setDark] = useState(
     () =>
       typeof document !== "undefined" &&
       document.documentElement.classList.contains("dark")
   );
+  const authSessionQuery = useAuthSessionQuery({
+    enabled: !isAuthRoute,
+  });
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
+
+  useEffect(() => {
+    if (isAuthRoute) {
+      return;
+    }
+
+    if (authSessionQuery.error?.status === 401) {
+      redirectToLogin();
+    }
+  }, [authSessionQuery.error?.status, isAuthRoute]);
 
   const activeItem =
     NAV_ITEMS.find((item) => item.path === location.pathname) ?? NAV_ITEMS[0];
@@ -216,6 +238,60 @@ export default function BusinessLayout({ children }) {
     );
   }
 
+  if (authSessionQuery.isLoading) {
+    return (
+      <div className="business-shell min-h-screen px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center">
+          <div className="glass-panel rounded-[1.75rem] px-6 py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              로그인 세션을 확인하는 중입니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (authSessionQuery.error?.status === 401) {
+    return null;
+  }
+
+  if (authSessionQuery.error && authSessionQuery.error?.status !== 404) {
+    return (
+      <div className="business-shell min-h-screen px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center">
+          <div className="glass-panel rounded-[1.75rem] px-6 py-8 text-center">
+            <p className="text-base font-medium text-foreground">
+              운영 콘솔을 불러오지 못했습니다.
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {authSessionQuery.error?.message ?? "잠시 후 다시 시도해주세요."}
+            </p>
+            <div className="mt-5 flex justify-center">
+              <Button type="button" onClick={() => authSessionQuery.refetch()}>
+                다시 시도
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleLogout = async () => {
+    setLogoutPending(true);
+    clearAuthRedirectPath();
+
+    try {
+      await logoutFromGateway();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      queryClient.clear();
+      window.location.assign("/auth/login");
+    }
+  };
+
   return (
     <div className="business-shell min-h-screen">
       <div className="pointer-events-none absolute left-[-10rem] top-[-9rem] h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.18),transparent_66%)] blur-3xl" />
@@ -289,13 +365,15 @@ export default function BusinessLayout({ children }) {
             </button>
             <button
               type="button"
+              onClick={handleLogout}
+              disabled={logoutPending}
               title={collapsed ? "로그아웃" : undefined}
               className="flex items-center gap-3 rounded-[1.35rem] px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
             >
               <span className="grid h-10 w-10 place-items-center rounded-2xl border border-white/70 bg-white/72 text-rose-500 dark:border-slate-700 dark:bg-slate-950/40">
                 <LogOut size={17} />
               </span>
-              {!collapsed && <span>로그아웃</span>}
+              {!collapsed && <span>{logoutPending ? "로그아웃 중..." : "로그아웃"}</span>}
             </button>
           </div>
         </div>

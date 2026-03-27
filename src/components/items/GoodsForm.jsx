@@ -1,3 +1,6 @@
+import { useState } from "react"
+
+import ItemThumbnailField from "@/components/items/ItemThumbnailField.jsx"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,13 +18,28 @@ function FieldError({ errors, name }) {
 export default function GoodsForm({
   state, myStore, goodsCategoryId, setGoodsCategoryId, goodsCategories, formAction, isPending,
 }) {
+  const [thumbnail, setThumbnail] = useState(null)
+  const [isThumbnailUploading, setIsThumbnailUploading] = useState(false)
+
   return (
     <form action={formAction}>
       <input type="hidden" name="itemType" value="goods" />
       <input type="hidden" name="storeId" value={myStore?.id ?? ""} />
       <input type="hidden" name="categoryId" value={goodsCategoryId} />
+      <input type="hidden" name="thumbnailMediaId" value={thumbnail?.mediaId ?? ""} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <ItemThumbnailField
+            label="굿즈 대표 이미지"
+            hint="상품 목록과 클라이언트 노출 화면에서 사용할 썸네일입니다."
+            value={thumbnail}
+            onChange={setThumbnail}
+            onUploadingChange={setIsThumbnailUploading}
+            disabled={isPending}
+          />
+        </div>
+
         <div className="flex flex-col gap-1.5 sm:col-span-2">
           <Label htmlFor="goods-name" className="text-sm font-medium">
             굿즈명 <span className="text-destructive">*</span>
@@ -77,7 +95,7 @@ export default function GoodsForm({
       )}
 
       <div className="flex justify-end mt-5 pt-4 border-t border-border">
-        <Button type="submit" disabled={isPending || !myStore?.id}>
+        <Button type="submit" disabled={isPending || !myStore?.id || isThumbnailUploading}>
           {isPending ? "등록 중..." : "굿즈 등록"}
         </Button>
       </div>

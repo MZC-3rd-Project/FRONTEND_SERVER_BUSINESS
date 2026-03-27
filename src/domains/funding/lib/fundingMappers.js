@@ -88,6 +88,7 @@ function mapCampaign(raw = {}) {
     id: toId(raw?.campaignId ?? raw?.id),
     itemId: toId(raw?.itemId),
     sellerId: toId(raw?.sellerId),
+    thumbnailMediaId: toId(raw?.thumbnailMediaId),
     title: toText(raw?.title, "제목 없는 펀딩"),
     summary: toText(raw?.summary),
     makerName: toText(raw?.makerName, "메이커 정보 준비 중"),
@@ -108,6 +109,7 @@ function mapCampaign(raw = {}) {
     progressLabel: progress.progressLabel,
     createdAt: raw?.createdAt ?? null,
     updatedAt: raw?.updatedAt ?? null,
+    rewardOptions: Array.isArray(raw?.rewardOptions) ? raw.rewardOptions : [],
   }
 }
 

@@ -12,6 +12,7 @@ import { fundingKeys, useCampaignsQuery } from "../hook/useFundingQuery.js"
 import { cancelCampaign } from "../api/fundingApi.js"
 import FundingFormFields from "@/components/funding/FundingFormFields.jsx"
 import PageIntro from "@/components/layout/PageIntro.jsx"
+import ItemThumbnail from "@/components/items/ItemThumbnail.jsx"
 import { demoCampaigns, demoItems } from "@/domains/management/mock/demoData.js"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +30,8 @@ function getCampaignStatusMeta(status) {
 function FundingForm({ onReset }) {
   const [fundingType, setFundingType] = useState("AMOUNT_BASED")
   const [itemId, setItemId] = useState("")
+  const [thumbnail, setThumbnail] = useState(null)
+  const [isThumbnailUploading, setIsThumbnailUploading] = useState(false)
   const queryClient = useQueryClient()
 
   const [state, formAction, isPending] = useActionState(createCampaignAction, {})
@@ -131,29 +134,39 @@ function FundingForm({ onReset }) {
 
                 return (
                   <div key={campaign.id} className="metric-chip rounded-[1.6rem] px-5 py-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-base font-semibold text-foreground">
-                          {campaign.title}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
-                          <Badge variant="outline">
-                            {campaign.fundingType === "QUANTITY_BASED" ? "수량 기반" : "금액 기반"}
-                          </Badge>
+                    <div className="mb-4 flex items-start gap-4">
+                      <ItemThumbnail
+                        mediaId={campaign.thumbnailMediaId}
+                        alt={campaign.title}
+                        className="h-20 w-20 shrink-0"
+                        fallbackLabel="펀딩 이미지 없음"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-semibold text-foreground">
+                              {campaign.title}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                              <Badge variant="outline">
+                                {campaign.fundingType === "QUANTITY_BASED" ? "수량 기반" : "금액 기반"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                              Item
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {linkedItem?.title ?? `#${campaign.itemId}`}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                          Item
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {linkedItem?.title ?? `#${campaign.itemId}`}
-                        </p>
                       </div>
                     </div>
 
-                      <div className="mt-4">
+                    <div className="mt-4">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">진행률</span>
                         <span className="font-semibold text-foreground">{campaign.progressLabel}</span>
@@ -277,11 +290,14 @@ function FundingForm({ onReset }) {
           <FundingFormFields
             state={state}
             formAction={formAction}
-            isPending={isPending}
+            isPending={isPending || isThumbnailUploading}
             fundingType={fundingType}
             itemId={itemId}
             setItemId={setItemId}
             products={sourceProducts}
+            thumbnail={thumbnail}
+            setThumbnail={setThumbnail}
+            onThumbnailUploadingChange={setIsThumbnailUploading}
           />
         </div>
       </Card>
