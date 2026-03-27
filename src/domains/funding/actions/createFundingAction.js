@@ -1,9 +1,30 @@
 import { campaignCreateSchema } from "./schema/fundingSchema.js"
 import { createCampaign } from "../api/fundingApi.js"
+import {
+  dedupeItemIds,
+  ensurePrimaryItemId,
+  toRewardOptionsPayload,
+} from "@/domains/funding/lib/fundingRewardUtils.js"
+
+function parseJsonArray(rawValue) {
+  if (!rawValue || typeof rawValue !== "string") return []
+
+  try {
+    const parsed = JSON.parse(rawValue)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
 
 export async function createCampaignAction(prevState, formData) {
+  const selectedItemIds = dedupeItemIds(parseJsonArray(formData.get("itemIdsJson")))
+  const primaryItemId = ensurePrimaryItemId(formData.get("itemId"), selectedItemIds)
+  const rewardOptions = parseJsonArray(formData.get("rewardOptionsJson"))
+  const normalizedRewardOptions = toRewardOptionsPayload(rewardOptions)
+
   const result = campaignCreateSchema.safeParse({
-    itemId: formData.get("itemId"),
+    itemId: primaryItemId,
     thumbnailMediaId: formData.get("thumbnailMediaId") || undefined,
     fundingType: formData.get("fundingType"),
     title: formData.get("title") || undefined,
@@ -21,12 +42,22 @@ export async function createCampaignAction(prevState, formData) {
     return { success: false, errors: result.error.flatten().fieldErrors }
   }
 
+  if (selectedItemIds.length === 0) {
+    return { success: false, errors: { itemId: ["아이템을 1개 이상 선택해주세요."] } }
+  }
+
+  if (normalizedRewardOptions.length === 0) {
+    return { success: false, errors: { _root: ["리워드 구성을 1개 이상 추가해주세요."] } }
+  }
+
   const { startAt, endAt, goalQuantity, minAmount, thumbnailMediaId, ...rest } = result.data
 
   try {
     await createCampaign({
       ...rest,
-      ...(thumbnailMediaId ? { thumbnailMediaId: Number(thumbnailMediaId) } : {}),
+      itemIds: selectedItemIds.map((itemId) => Number(itemId)),
+      rewardOptions: normalizedRewardOptions,
+      ...(thumbnailMediaId ? { thumbnailMediaId: String(thumbnailMediaId) } : {}),
       ...(goalQuantity ? { goalQuantity } : {}),
       ...(minAmount ? { minAmount } : {}),
       startAt: `${startAt}T00:00:00`,

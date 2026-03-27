@@ -180,6 +180,55 @@ function nextId(state, key) {
   return current
 }
 
+function normalizeCampaignItemIds(payload = {}) {
+  return [...new Set(
+    [
+      ...(Array.isArray(payload?.itemIds) ? payload.itemIds : []),
+      payload?.itemId,
+      ...(
+        Array.isArray(payload?.rewardOptions)
+          ? payload.rewardOptions.flatMap((option) => [option?.itemId, ...(Array.isArray(option?.itemIds) ? option.itemIds : [])])
+          : []
+      ),
+    ]
+      .map((itemId) => Number(itemId))
+      .filter((itemId) => Number.isFinite(itemId)),
+  )]
+}
+
+function buildDemoRewardOptions(payload = {}, itemIds = []) {
+  const sourceRewardOptions = Array.isArray(payload?.rewardOptions) ? payload.rewardOptions : []
+  if (sourceRewardOptions.length > 0) {
+    return sourceRewardOptions.map((option, index) => ({
+      rewardOptionId: option?.rewardOptionId ?? option?.id ?? `${Date.now()}-${index}`,
+      itemId: Number(option?.itemId ?? option?.itemIds?.[0] ?? itemIds[0] ?? payload?.itemId),
+      itemIds: [Number(option?.itemId ?? option?.itemIds?.[0] ?? itemIds[0] ?? payload?.itemId)],
+      title: option?.title ?? option?.label ?? `리워드 ${index + 1}`,
+      description: option?.description ?? "",
+      amount: Number(option?.amount ?? option?.price ?? 0),
+      quantityLimit:
+        option?.quantityLimit != null && option?.quantityLimit !== ""
+          ? Number(option.quantityLimit)
+          : null,
+      sortOrder: option?.sortOrder ?? index,
+    }))
+  }
+
+  return itemIds.map((itemId, index) => {
+    const product = readState().products.find((candidate) => Number(candidate.id) === Number(itemId))
+    return {
+      rewardOptionId: `${Date.now()}-${index}`,
+      itemId: Number(itemId),
+      itemIds: [Number(itemId)],
+      title: product?.title ?? `리워드 ${index + 1}`,
+      description: "",
+      amount: Number(product?.price ?? 0),
+      quantityLimit: null,
+      sortOrder: index,
+    }
+  })
+}
+
 function normalizeStoreResponse(store) {
   if (!store) return null
   return {
@@ -374,8 +423,11 @@ export function demoToggleProductStatus(itemId, status) {
 
 export function demoDeleteProduct(itemId) {
   updateState((state) => {
+    const normalizedItemId = Number(itemId)
     state.products = state.products.filter((item) => Number(item.id) !== Number(itemId))
-    state.campaigns = state.campaigns.filter((campaign) => Number(campaign.itemId) !== Number(itemId))
+    state.campaigns = state.campaigns.filter(
+      (campaign) => !normalizeCampaignItemIds(campaign).includes(normalizedItemId),
+    )
     state.hotDeals = state.hotDeals.filter((deal) => Number(deal.itemId) !== Number(itemId))
     delete state.reviewsByItemId[String(itemId)]
     return state
@@ -446,13 +498,16 @@ export function demoGetCampaigns() {
 export function demoCreateCampaign(payload) {
   const nextState = updateState((state) => {
     const campaignId = nextId(state, "campaign")
+    const itemIds = normalizeCampaignItemIds(payload)
+    const rewardOptions = buildDemoRewardOptions(payload, itemIds)
     state.campaigns.unshift({
       id: campaignId,
-      itemId: Number(payload.itemId),
+      itemId: Number(payload.itemId ?? itemIds[0]),
+      itemIds,
       sellerId: DEMO_USER_ID,
       title: payload.title || "새 펀딩 캠페인",
       summary: payload.summary || "",
-      makerName: payload.makerName || "돈모아",
+      makerName: payload.makerName || demoStore.storeName,
       category: payload.category || "",
       fundingType: payload.fundingType,
       goalAmount: payload.goalAmount ?? 0,
@@ -463,11 +518,12 @@ export function demoCreateCampaign(payload) {
       status: "ACTIVE",
       startAt: payload.startAt,
       endAt: payload.endAt,
+      rewardOptions,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
     state.products = state.products.map((item) =>
-      Number(item.id) === Number(payload.itemId) ? { ...item, status: "FUNDING" } : item
+      itemIds.includes(Number(item.id)) ? { ...item, status: "FUNDING" } : item
     )
     return state
   })
@@ -479,10 +535,11 @@ export function demoCancelCampaign(campaignId) {
   const nextState = updateState((state) => {
     const target = state.campaigns.find((campaign) => Number(campaign.id) === Number(campaignId))
     if (target) {
+      const campaignItemIds = normalizeCampaignItemIds(target)
       target.status = "CANCELLED"
       target.updatedAt = new Date().toISOString()
       state.products = state.products.map((item) =>
-        Number(item.id) === Number(target.itemId) && item.status === "FUNDING"
+        campaignItemIds.includes(Number(item.id)) && item.status === "FUNDING"
           ? { ...item, status: "ON_SALE" }
           : item
       )
@@ -499,15 +556,33 @@ export function demoGetCampaignById(campaignId) {
 
 export function demoUpdateCampaign(campaignId, payload) {
   const nextState = updateState((state) => {
+    const previous = state.campaigns.find((campaign) => Number(campaign.id) === Number(campaignId))
+    const previousItemIds = previous ? normalizeCampaignItemIds(previous) : []
+    const nextItemIds = normalizeCampaignItemIds({ ...previous, ...payload })
+    const nextRewardOptions = buildDemoRewardOptions({ ...previous, ...payload }, nextItemIds)
+
     state.campaigns = state.campaigns.map((campaign) =>
       Number(campaign.id) === Number(campaignId)
         ? {
             ...campaign,
             ...payload,
+            itemId: Number(payload?.itemId ?? nextItemIds[0] ?? campaign.itemId),
+            itemIds: nextItemIds,
+            rewardOptions: nextRewardOptions,
             updatedAt: new Date().toISOString(),
           }
         : campaign
     )
+    state.products = state.products.map((item) => {
+      const itemId = Number(item.id)
+      if (previousItemIds.includes(itemId) && !nextItemIds.includes(itemId) && item.status === "FUNDING") {
+        return { ...item, status: "ON_SALE" }
+      }
+      if (nextItemIds.includes(itemId)) {
+        return { ...item, status: "FUNDING" }
+      }
+      return item
+    })
     return state
   })
 
@@ -515,7 +590,11 @@ export function demoUpdateCampaign(campaignId, payload) {
 }
 
 export function demoGetCampaignByItemId(itemId) {
-  return demoGetCampaigns().content.find((campaign) => Number(campaign.itemId) === Number(itemId)) ?? null
+  return (
+    demoGetCampaigns().content.find((campaign) =>
+      normalizeCampaignItemIds(campaign).includes(Number(itemId)),
+    ) ?? null
+  )
 }
 
 export function demoGetCampaignProgress(campaignId) {

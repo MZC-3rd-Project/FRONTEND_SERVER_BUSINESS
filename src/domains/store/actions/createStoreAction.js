@@ -10,7 +10,7 @@ export async function createStoreAction(prevState, formData) {
     thumbnail?.mediaId
       ? {
           imageType: "THUMBNAIL",
-          mediaId: Number(thumbnail.mediaId),
+          mediaId: String(thumbnail.mediaId),
           sortOrder: 0,
         }
       : null,
@@ -18,7 +18,7 @@ export async function createStoreAction(prevState, formData) {
       .filter((image) => image?.mediaId)
       .map((image, index) => ({
         imageType: "GALLERY",
-        mediaId: Number(image.mediaId),
+        mediaId: String(image.mediaId),
         sortOrder: index + 1,
       })),
   ].filter(Boolean)

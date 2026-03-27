@@ -20,7 +20,13 @@ function buildItemImageRequests(thumbnailMediaId) {
     return []
   }
 
-  return [{ mediaId: Number(thumbnailMediaId), sortOrder: 0, isThumbnail: true }]
+  return [{ mediaId: String(thumbnailMediaId), sortOrder: 0, isThumbnail: true }]
+}
+
+function hasDifferentId(left, right) {
+  const normalizedLeft = left == null ? "" : String(left).trim()
+  const normalizedRight = right == null ? "" : String(right).trim()
+  return normalizedLeft !== normalizedRight
 }
 
 export async function getSellerProducts() {
@@ -176,7 +182,7 @@ export async function updateGoods(itemId, payload) {
   } = payload
   const deleteImageIds = []
 
-  if (currentThumbnailImageId && (clearThumbnail || (thumbnailMediaId && Number(thumbnailMediaId) !== Number(currentThumbnailMediaId)))) {
+  if (currentThumbnailImageId && (clearThumbnail || (thumbnailMediaId && hasDifferentId(thumbnailMediaId, currentThumbnailMediaId)))) {
     deleteImageIds.push(Number(currentThumbnailImageId))
   }
 
@@ -184,10 +190,10 @@ export async function updateGoods(itemId, payload) {
     const response = await bffApiInstance.put(`/bff/v1/goods/${itemId}`, {
       item: {
         ...itemPayload,
-        ...(thumbnailMediaId ? { thumbnailMediaId } : {}),
+        ...(thumbnailMediaId ? { thumbnailMediaId: String(thumbnailMediaId) } : {}),
         ...(clearThumbnail ? { clearThumbnail: true } : {}),
       },
-      ...(thumbnailMediaId && Number(thumbnailMediaId) !== Number(currentThumbnailMediaId)
+      ...(thumbnailMediaId && hasDifferentId(thumbnailMediaId, currentThumbnailMediaId)
         ? { addImages: buildItemImageRequests(thumbnailMediaId) }
         : {}),
       ...(deleteImageIds.length > 0 ? { deleteImageIds } : {}),
@@ -212,7 +218,7 @@ export async function updatePerformance(itemId, payload) {
   } = payload
   const deleteImageIds = []
 
-  if (currentThumbnailImageId && (clearThumbnail || (thumbnailMediaId && Number(thumbnailMediaId) !== Number(currentThumbnailMediaId)))) {
+  if (currentThumbnailImageId && (clearThumbnail || (thumbnailMediaId && hasDifferentId(thumbnailMediaId, currentThumbnailMediaId)))) {
     deleteImageIds.push(Number(currentThumbnailImageId))
   }
 
@@ -220,10 +226,10 @@ export async function updatePerformance(itemId, payload) {
     const response = await bffApiInstance.put(`/bff/v1/performances/${itemId}`, {
       item: {
         ...itemPayload,
-        ...(thumbnailMediaId ? { thumbnailMediaId } : {}),
+        ...(thumbnailMediaId ? { thumbnailMediaId: String(thumbnailMediaId) } : {}),
         ...(clearThumbnail ? { clearThumbnail: true } : {}),
       },
-      ...(thumbnailMediaId && Number(thumbnailMediaId) !== Number(currentThumbnailMediaId)
+      ...(thumbnailMediaId && hasDifferentId(thumbnailMediaId, currentThumbnailMediaId)
         ? { addImages: buildItemImageRequests(thumbnailMediaId) }
         : {}),
       ...(deleteImageIds.length > 0 ? { deleteImageIds } : {}),

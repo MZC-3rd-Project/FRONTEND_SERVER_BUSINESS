@@ -4,9 +4,7 @@ import { createGoods, createPerformance } from "../api/itemsApi.js"
 export async function createItemAction(prevState, formData) {
   const itemType = formData.get("itemType")
   const rawThumbnailMediaId = formData.get("thumbnailMediaId")
-  const thumbnailMediaId = rawThumbnailMediaId ? Number(rawThumbnailMediaId) : undefined
-
-  console.log(formData);
+  const thumbnailMediaId = rawThumbnailMediaId ? String(rawThumbnailMediaId) : undefined
 
   if (itemType === "goods") {
     const storeId = formData.get("storeId")
@@ -20,7 +18,6 @@ export async function createItemAction(prevState, formData) {
     })
 
     if (!result.success) {
-      console.log("validation errors:", result.error.flatten().fieldErrors)
       return { success: false, errors: result.error.flatten().fieldErrors }
     }
 
@@ -67,7 +64,6 @@ export async function createItemAction(prevState, formData) {
     })
 
     if (!result.success) {
-      console.log("validation errors:", result.error.flatten().fieldErrors)
       return { success: false, errors: result.error.flatten().fieldErrors }
     }
 
@@ -76,7 +72,6 @@ export async function createItemAction(prevState, formData) {
       totalSeats, runningTimeMinutes, ageLimit, bookingNotice, organizer, host,
       gradeName, gradePrice, description,
     } = result.data
-    console.log()
     try {
       await createPerformance({
         title: name,

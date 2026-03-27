@@ -1,4 +1,4 @@
-import { useState, useEffect, useActionState } from "react"
+import { useState, useEffect, useActionState, useMemo } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, DollarSign, Hash, Check, Ban } from "lucide-react"
 import { Link } from "react-router"
@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createCampaignAction } from "../actions/createFundingAction.js"
-import { useSellerProductsQuery } from "@/domains/items/hook/useItemsQuery.js"
+import { useMyStoreQuery, useSellerProductsQuery } from "@/domains/items/hook/useItemsQuery.js"
 import { fundingKeys, useCampaignsQuery } from "../hook/useFundingQuery.js"
 import { cancelCampaign } from "../api/fundingApi.js"
 import FundingFormFields from "@/components/funding/FundingFormFields.jsx"
@@ -29,22 +29,30 @@ function getCampaignStatusMeta(status) {
 
 function FundingForm({ onReset }) {
   const [fundingType, setFundingType] = useState("AMOUNT_BASED")
-  const [itemId, setItemId] = useState("")
+  const [selectedItemIds, setSelectedItemIds] = useState([])
+  const [primaryItemId, setPrimaryItemId] = useState("")
+  const [rewardOptions, setRewardOptions] = useState([])
   const [thumbnail, setThumbnail] = useState(null)
   const [isThumbnailUploading, setIsThumbnailUploading] = useState(false)
   const queryClient = useQueryClient()
 
   const [state, formAction, isPending] = useActionState(createCampaignAction, {})
+  const { data: myStore } = useMyStoreQuery()
   const { data: productsPayload } = useSellerProductsQuery();
   const products = productsPayload?.items ?? []
   const { data: campaignPage } = useCampaignsQuery()
   const campaignItems = campaignPage?.items ?? []
   const usingDemoFunding = import.meta.env.DEV && products.length === 0 && campaignItems.length === 0
   const sourceProducts = usingDemoFunding ? demoItems : products
+  const productMap = useMemo(
+    () => new Map(sourceProducts.map((product) => [String(product.id), product])),
+    [sourceProducts],
+  )
   const sellerItemIds = new Set(sourceProducts.map((product) => String(product.id)))
   const campaigns = (usingDemoFunding ? demoCampaigns : campaignItems).filter((campaign) =>
-    sellerItemIds.has(String(campaign.itemId))
+    (campaign.itemIds ?? [campaign.itemId]).some((itemId) => sellerItemIds.has(String(itemId)))
   )
+  const defaultMakerName = myStore?.storeName ?? myStore?.store_name ?? myStore?.name ?? ""
   const cancelMutation = useMutation({
     mutationFn: ({ campaignId, reason }) => cancelCampaign(campaignId, reason),
     onSuccess: () => {
@@ -128,8 +136,10 @@ function FundingForm({ onReset }) {
             <div className="grid gap-4 lg:grid-cols-2">
               {campaigns.map((campaign) => {
                 const statusMeta = getCampaignStatusMeta(campaign.statusCode)
-                const linkedItem =
-                  products.find((product) => String(product.id) === String(campaign.itemId))
+                const linkedItemIds = campaign.itemIds ?? [campaign.itemId].filter(Boolean)
+                const linkedProducts = linkedItemIds
+                  .map((itemId) => productMap.get(String(itemId)))
+                  .filter(Boolean)
                 const isActive = campaign.statusCode === "ACTIVE"
 
                 return (
@@ -157,10 +167,13 @@ function FundingForm({ onReset }) {
                           </div>
                           <div className="text-right">
                             <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                              Item
+                              Bundle
                             </p>
                             <p className="mt-1 text-sm text-muted-foreground">
-                              {linkedItem?.title ?? `#${campaign.itemId}`}
+                              {linkedProducts[0]?.title ?? `#${campaign.itemId}`}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              아이템 {linkedItemIds.length}개 · 리워드 {campaign.rewardOptionCount ?? 0}개
                             </p>
                           </div>
                         </div>
@@ -203,6 +216,19 @@ function FundingForm({ onReset }) {
                       <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted-foreground">
                         {campaign.summary}
                       </p>
+                    ) : null}
+
+                    {linkedProducts.length > 0 ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {linkedProducts.slice(0, 3).map((product) => (
+                          <Badge key={product.id} variant="outline">
+                            {product.title}
+                          </Badge>
+                        ))}
+                        {linkedProducts.length > 3 ? (
+                          <Badge variant="outline">+{linkedProducts.length - 3}</Badge>
+                        ) : null}
+                      </div>
                     ) : null}
 
                     <div className="mt-5 flex flex-wrap gap-2">
@@ -293,12 +319,17 @@ function FundingForm({ onReset }) {
             formAction={formAction}
             isPending={isPending || isThumbnailUploading}
             fundingType={fundingType}
-            itemId={itemId}
-            setItemId={setItemId}
+            selectedItemIds={selectedItemIds}
+            setSelectedItemIds={setSelectedItemIds}
+            primaryItemId={primaryItemId}
+            setPrimaryItemId={setPrimaryItemId}
+            rewardOptions={rewardOptions}
+            setRewardOptions={setRewardOptions}
             products={sourceProducts}
             thumbnail={thumbnail}
             setThumbnail={setThumbnail}
             onThumbnailUploadingChange={setIsThumbnailUploading}
+            defaultMakerName={defaultMakerName}
           />
         </div>
       </Card>

@@ -27,6 +27,10 @@ function toId(value, fallback = null) {
   return normalized || fallback
 }
 
+function toArray(value) {
+  return Array.isArray(value) ? value : []
+}
+
 function formatPrice(value) {
   const number = toNullableNumber(value)
 
@@ -103,13 +107,48 @@ function computeProgress(raw = {}) {
   }
 }
 
+function resolveCampaignItemIds(raw = {}) {
+  const itemIds = toArray(raw?.itemIds)
+    .map((itemId) => toId(itemId))
+    .filter(Boolean)
+  const rewardOptionItemIds = toArray(raw?.rewardOptions)
+    .flatMap((option) => [option?.itemId, ...(Array.isArray(option?.itemIds) ? option.itemIds : [])])
+    .map((itemId) => toId(itemId))
+    .filter(Boolean)
+  const representativeItemId = toId(raw?.itemId)
+
+  return [...new Set([...itemIds, ...rewardOptionItemIds, representativeItemId].filter(Boolean))]
+}
+
+function mapRewardOption(raw = {}, index = 0) {
+  const itemIds = [...new Set(
+    [raw?.itemId, ...(Array.isArray(raw?.itemIds) ? raw.itemIds : [])]
+      .map((itemId) => toId(itemId))
+      .filter(Boolean),
+  )]
+
+  return {
+    id: toId(raw?.rewardOptionId ?? raw?.id, `reward-${index}`),
+    itemId: itemIds[0] ?? null,
+    itemIds,
+    title: toText(raw?.title ?? raw?.label ?? raw?.name, `리워드 ${index + 1}`),
+    description: toText(raw?.description ?? raw?.summary),
+    amount: toNullableNumber(raw?.amount ?? raw?.price ?? raw?.pledgeAmount),
+    quantityLimit: toNullableNumber(raw?.quantityLimit ?? raw?.maxQuantity ?? raw?.stockQuantity),
+    sortOrder: toNumber(raw?.sortOrder, index),
+  }
+}
+
 function mapCampaign(raw = {}) {
   const fundingType = toText(raw?.fundingType, "AMOUNT_BASED").toUpperCase()
   const progress = computeProgress({ ...raw, fundingType })
+  const rewardOptions = toArray(raw?.rewardOptions).map(mapRewardOption)
+  const itemIds = resolveCampaignItemIds(raw)
 
   return {
     id: toId(raw?.campaignId ?? raw?.id),
-    itemId: toId(raw?.itemId),
+    itemId: toId(raw?.itemId ?? itemIds[0]),
+    itemIds,
     sellerId: toId(raw?.sellerId),
     thumbnailMediaId: resolveThumbnailMediaId(raw),
     thumbnailUrl: resolveThumbnailUrl(raw),
@@ -133,7 +172,8 @@ function mapCampaign(raw = {}) {
     progressLabel: progress.progressLabel,
     createdAt: raw?.createdAt ?? null,
     updatedAt: raw?.updatedAt ?? null,
-    rewardOptions: Array.isArray(raw?.rewardOptions) ? raw.rewardOptions : [],
+    rewardOptions,
+    rewardOptionCount: rewardOptions.length,
   }
 }
 
